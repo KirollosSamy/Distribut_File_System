@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+option go_package = "distributed_file_system/grpc/master_client";
+
+package master_client;
+
+service ClientoMasterService {
+
+}
+

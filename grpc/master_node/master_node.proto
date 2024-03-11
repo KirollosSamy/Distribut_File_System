@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+option go_package = "distributed_file_system/grpc/master_node";
+
+package master_node;
+
+import "google/protobuf/empty.proto";
+
+enum ROLE {
+    SOURCE = 0;
+    DESTINATION = 1;
+}
+
+message ReplicateRequest {
+    ROLE role = 1;
+    string file_path = 2;
+    string other_node_ip = 3;
+    uint32 other_node_port = 4;
+}
+
+message HeartBeat {
+    uint32 node_id = 1;
+}
+
+message RegisterNodeRequest {
+    uint32 node_id = 1;
+    // possibly other initialization configurations
+}
+
+message FileUploadStatus {
+    string file_name = 1;
+    string file_path = 2;
+}
+
+service NodeToMasterService {
+    rpc KeepMeAlive(HeartBeat) returns (google.protobuf.Empty);
+    rpc ConfirmUpload(FileUploadStatus) returns (google.protobuf.Empty);
+}
+
+service MasterToNodeService {
+    rpc RegisterNode(RegisterNodeRequest) returns (google.protobuf.Empty);
+    rpc Replicate(ReplicateRequest) returns (google.protobuf.Empty);
+}

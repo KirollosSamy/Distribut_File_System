@@ -1,10 +1,43 @@
 syntax = "proto3";
 
-option go_package = "distributed_file_system/grpc/master_client";
+option go_package = "/";
 
 package master_client;
 
-service ClientoMasterService {
 
+message DownloadRequest {
+     string filename = 1;
+}
+
+message DownloadResponse {
+    repeated string IPs = 1;
+}
+
+message UploadRequest {
+    string filename = 1;
+}
+
+message AssignedPort {
+    int32 port = 1;
+}
+
+message isUploaded {
+    bool uploaded = 1;
+}
+
+message Success {
+    bool success = 1;
+}
+
+message Empty {}
+
+
+service MasterToClientService {
+    rpc UploadSuccess(Success) returns (Empty);
+}
+
+service ClientToMasterService {
+    rpc UploadFile(UploadRequest) returns (AssignedPort);
+    rpc DownloadFile(DownloadRequest) returns (DownloadResponse);
 }
 

@@ -10,7 +10,10 @@ message DownloadRequest {
 }
 
 message DownloadResponse {
+
+    // repeated Machine machines = 1;
     repeated string IPs = 1;
+    int64 filesize = 2;
 }
 
 message UploadRequest {
@@ -18,11 +21,8 @@ message UploadRequest {
 }
 
 message AssignedPort {
-    int32 port = 1;
-}
-
-message isUploaded {
-    bool uploaded = 1;
+    string IP = 1;
+    int32 port = 2;
 }
 
 message Success {
@@ -30,6 +30,12 @@ message Success {
 }
 
 message Empty {}
+
+// i guess we don't need to complicate things this much
+message Machine {
+    string IP = 1;
+    repeated int64 port = 2;
+}
 
 
 service MasterToClientService {

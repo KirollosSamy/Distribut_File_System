@@ -19,244 +19,244 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// NodeToMasterServiceClient is the client API for NodeToMasterService service.
+// NodeToMasterClient is the client API for NodeToMaster service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type NodeToMasterServiceClient interface {
+type NodeToMasterClient interface {
 	KeepMeAlive(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ConfirmUpload(ctx context.Context, in *FileUploadStatus, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
-type nodeToMasterServiceClient struct {
+type nodeToMasterClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewNodeToMasterServiceClient(cc grpc.ClientConnInterface) NodeToMasterServiceClient {
-	return &nodeToMasterServiceClient{cc}
+func NewNodeToMasterClient(cc grpc.ClientConnInterface) NodeToMasterClient {
+	return &nodeToMasterClient{cc}
 }
 
-func (c *nodeToMasterServiceClient) KeepMeAlive(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *nodeToMasterClient) KeepMeAlive(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/master_node.NodeToMasterService/KeepMeAlive", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/master_node.NodeToMaster/KeepMeAlive", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *nodeToMasterServiceClient) ConfirmUpload(ctx context.Context, in *FileUploadStatus, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *nodeToMasterClient) ConfirmUpload(ctx context.Context, in *FileUploadStatus, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/master_node.NodeToMasterService/ConfirmUpload", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/master_node.NodeToMaster/ConfirmUpload", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// NodeToMasterServiceServer is the server API for NodeToMasterService service.
-// All implementations must embed UnimplementedNodeToMasterServiceServer
+// NodeToMasterServer is the server API for NodeToMaster service.
+// All implementations must embed UnimplementedNodeToMasterServer
 // for forward compatibility
-type NodeToMasterServiceServer interface {
+type NodeToMasterServer interface {
 	KeepMeAlive(context.Context, *HeartBeat) (*emptypb.Empty, error)
 	ConfirmUpload(context.Context, *FileUploadStatus) (*emptypb.Empty, error)
-	mustEmbedUnimplementedNodeToMasterServiceServer()
+	mustEmbedUnimplementedNodeToMasterServer()
 }
 
-// UnimplementedNodeToMasterServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedNodeToMasterServiceServer struct {
+// UnimplementedNodeToMasterServer must be embedded to have forward compatible implementations.
+type UnimplementedNodeToMasterServer struct {
 }
 
-func (UnimplementedNodeToMasterServiceServer) KeepMeAlive(context.Context, *HeartBeat) (*emptypb.Empty, error) {
+func (UnimplementedNodeToMasterServer) KeepMeAlive(context.Context, *HeartBeat) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method KeepMeAlive not implemented")
 }
-func (UnimplementedNodeToMasterServiceServer) ConfirmUpload(context.Context, *FileUploadStatus) (*emptypb.Empty, error) {
+func (UnimplementedNodeToMasterServer) ConfirmUpload(context.Context, *FileUploadStatus) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConfirmUpload not implemented")
 }
-func (UnimplementedNodeToMasterServiceServer) mustEmbedUnimplementedNodeToMasterServiceServer() {}
+func (UnimplementedNodeToMasterServer) mustEmbedUnimplementedNodeToMasterServer() {}
 
-// UnsafeNodeToMasterServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to NodeToMasterServiceServer will
+// UnsafeNodeToMasterServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to NodeToMasterServer will
 // result in compilation errors.
-type UnsafeNodeToMasterServiceServer interface {
-	mustEmbedUnimplementedNodeToMasterServiceServer()
+type UnsafeNodeToMasterServer interface {
+	mustEmbedUnimplementedNodeToMasterServer()
 }
 
-func RegisterNodeToMasterServiceServer(s grpc.ServiceRegistrar, srv NodeToMasterServiceServer) {
-	s.RegisterService(&NodeToMasterService_ServiceDesc, srv)
+func RegisterNodeToMasterServer(s grpc.ServiceRegistrar, srv NodeToMasterServer) {
+	s.RegisterService(&NodeToMaster_ServiceDesc, srv)
 }
 
-func _NodeToMasterService_KeepMeAlive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _NodeToMaster_KeepMeAlive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HeartBeat)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeToMasterServiceServer).KeepMeAlive(ctx, in)
+		return srv.(NodeToMasterServer).KeepMeAlive(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/master_node.NodeToMasterService/KeepMeAlive",
+		FullMethod: "/master_node.NodeToMaster/KeepMeAlive",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeToMasterServiceServer).KeepMeAlive(ctx, req.(*HeartBeat))
+		return srv.(NodeToMasterServer).KeepMeAlive(ctx, req.(*HeartBeat))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _NodeToMasterService_ConfirmUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _NodeToMaster_ConfirmUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FileUploadStatus)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeToMasterServiceServer).ConfirmUpload(ctx, in)
+		return srv.(NodeToMasterServer).ConfirmUpload(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/master_node.NodeToMasterService/ConfirmUpload",
+		FullMethod: "/master_node.NodeToMaster/ConfirmUpload",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeToMasterServiceServer).ConfirmUpload(ctx, req.(*FileUploadStatus))
+		return srv.(NodeToMasterServer).ConfirmUpload(ctx, req.(*FileUploadStatus))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// NodeToMasterService_ServiceDesc is the grpc.ServiceDesc for NodeToMasterService service.
+// NodeToMaster_ServiceDesc is the grpc.ServiceDesc for NodeToMaster service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var NodeToMasterService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "master_node.NodeToMasterService",
-	HandlerType: (*NodeToMasterServiceServer)(nil),
+var NodeToMaster_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "master_node.NodeToMaster",
+	HandlerType: (*NodeToMasterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "KeepMeAlive",
-			Handler:    _NodeToMasterService_KeepMeAlive_Handler,
+			Handler:    _NodeToMaster_KeepMeAlive_Handler,
 		},
 		{
 			MethodName: "ConfirmUpload",
-			Handler:    _NodeToMasterService_ConfirmUpload_Handler,
+			Handler:    _NodeToMaster_ConfirmUpload_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "master_node.proto",
 }
 
-// MasterToNodeServiceClient is the client API for MasterToNodeService service.
+// MasterToNodeClient is the client API for MasterToNode service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type MasterToNodeServiceClient interface {
+type MasterToNodeClient interface {
 	RegisterNode(ctx context.Context, in *RegisterNodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Replicate(ctx context.Context, in *ReplicateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
-type masterToNodeServiceClient struct {
+type masterToNodeClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewMasterToNodeServiceClient(cc grpc.ClientConnInterface) MasterToNodeServiceClient {
-	return &masterToNodeServiceClient{cc}
+func NewMasterToNodeClient(cc grpc.ClientConnInterface) MasterToNodeClient {
+	return &masterToNodeClient{cc}
 }
 
-func (c *masterToNodeServiceClient) RegisterNode(ctx context.Context, in *RegisterNodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *masterToNodeClient) RegisterNode(ctx context.Context, in *RegisterNodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/master_node.MasterToNodeService/RegisterNode", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/master_node.MasterToNode/RegisterNode", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *masterToNodeServiceClient) Replicate(ctx context.Context, in *ReplicateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *masterToNodeClient) Replicate(ctx context.Context, in *ReplicateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/master_node.MasterToNodeService/Replicate", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/master_node.MasterToNode/Replicate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// MasterToNodeServiceServer is the server API for MasterToNodeService service.
-// All implementations must embed UnimplementedMasterToNodeServiceServer
+// MasterToNodeServer is the server API for MasterToNode service.
+// All implementations must embed UnimplementedMasterToNodeServer
 // for forward compatibility
-type MasterToNodeServiceServer interface {
+type MasterToNodeServer interface {
 	RegisterNode(context.Context, *RegisterNodeRequest) (*emptypb.Empty, error)
 	Replicate(context.Context, *ReplicateRequest) (*emptypb.Empty, error)
-	mustEmbedUnimplementedMasterToNodeServiceServer()
+	mustEmbedUnimplementedMasterToNodeServer()
 }
 
-// UnimplementedMasterToNodeServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedMasterToNodeServiceServer struct {
+// UnimplementedMasterToNodeServer must be embedded to have forward compatible implementations.
+type UnimplementedMasterToNodeServer struct {
 }
 
-func (UnimplementedMasterToNodeServiceServer) RegisterNode(context.Context, *RegisterNodeRequest) (*emptypb.Empty, error) {
+func (UnimplementedMasterToNodeServer) RegisterNode(context.Context, *RegisterNodeRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterNode not implemented")
 }
-func (UnimplementedMasterToNodeServiceServer) Replicate(context.Context, *ReplicateRequest) (*emptypb.Empty, error) {
+func (UnimplementedMasterToNodeServer) Replicate(context.Context, *ReplicateRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Replicate not implemented")
 }
-func (UnimplementedMasterToNodeServiceServer) mustEmbedUnimplementedMasterToNodeServiceServer() {}
+func (UnimplementedMasterToNodeServer) mustEmbedUnimplementedMasterToNodeServer() {}
 
-// UnsafeMasterToNodeServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to MasterToNodeServiceServer will
+// UnsafeMasterToNodeServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to MasterToNodeServer will
 // result in compilation errors.
-type UnsafeMasterToNodeServiceServer interface {
-	mustEmbedUnimplementedMasterToNodeServiceServer()
+type UnsafeMasterToNodeServer interface {
+	mustEmbedUnimplementedMasterToNodeServer()
 }
 
-func RegisterMasterToNodeServiceServer(s grpc.ServiceRegistrar, srv MasterToNodeServiceServer) {
-	s.RegisterService(&MasterToNodeService_ServiceDesc, srv)
+func RegisterMasterToNodeServer(s grpc.ServiceRegistrar, srv MasterToNodeServer) {
+	s.RegisterService(&MasterToNode_ServiceDesc, srv)
 }
 
-func _MasterToNodeService_RegisterNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MasterToNode_RegisterNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RegisterNodeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MasterToNodeServiceServer).RegisterNode(ctx, in)
+		return srv.(MasterToNodeServer).RegisterNode(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/master_node.MasterToNodeService/RegisterNode",
+		FullMethod: "/master_node.MasterToNode/RegisterNode",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterToNodeServiceServer).RegisterNode(ctx, req.(*RegisterNodeRequest))
+		return srv.(MasterToNodeServer).RegisterNode(ctx, req.(*RegisterNodeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MasterToNodeService_Replicate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MasterToNode_Replicate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ReplicateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MasterToNodeServiceServer).Replicate(ctx, in)
+		return srv.(MasterToNodeServer).Replicate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/master_node.MasterToNodeService/Replicate",
+		FullMethod: "/master_node.MasterToNode/Replicate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MasterToNodeServiceServer).Replicate(ctx, req.(*ReplicateRequest))
+		return srv.(MasterToNodeServer).Replicate(ctx, req.(*ReplicateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// MasterToNodeService_ServiceDesc is the grpc.ServiceDesc for MasterToNodeService service.
+// MasterToNode_ServiceDesc is the grpc.ServiceDesc for MasterToNode service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var MasterToNodeService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "master_node.MasterToNodeService",
-	HandlerType: (*MasterToNodeServiceServer)(nil),
+var MasterToNode_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "master_node.MasterToNode",
+	HandlerType: (*MasterToNodeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "RegisterNode",
-			Handler:    _MasterToNodeService_RegisterNode_Handler,
+			Handler:    _MasterToNode_RegisterNode_Handler,
 		},
 		{
 			MethodName: "Replicate",
-			Handler:    _MasterToNodeService_Replicate_Handler,
+			Handler:    _MasterToNode_Replicate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

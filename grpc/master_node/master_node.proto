@@ -32,12 +32,12 @@ message FileUploadStatus {
     string file_path = 2;
 }
 
-service NodeToMasterService {
+service NodeToMaster {
     rpc KeepMeAlive(HeartBeat) returns (google.protobuf.Empty);
     rpc ConfirmUpload(FileUploadStatus) returns (google.protobuf.Empty);
 }
 
-service MasterToNodeService {
+service MasterToNode {
     rpc RegisterNode(RegisterNodeRequest) returns (google.protobuf.Empty);
     rpc Replicate(ReplicateRequest) returns (google.protobuf.Empty);
 }

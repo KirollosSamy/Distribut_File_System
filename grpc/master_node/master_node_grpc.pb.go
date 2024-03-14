@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NodeToMasterClient interface {
-	KeepMeAlive(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	KeepMeAlive(ctx context.Context, opts ...grpc.CallOption) (NodeToMaster_KeepMeAliveClient, error)
 	ConfirmUpload(ctx context.Context, in *FileUploadStatus, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -35,13 +35,38 @@ func NewNodeToMasterClient(cc grpc.ClientConnInterface) NodeToMasterClient {
 	return &nodeToMasterClient{cc}
 }
 
-func (c *nodeToMasterClient) KeepMeAlive(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/master_node.NodeToMaster/KeepMeAlive", in, out, opts...)
+func (c *nodeToMasterClient) KeepMeAlive(ctx context.Context, opts ...grpc.CallOption) (NodeToMaster_KeepMeAliveClient, error) {
+	stream, err := c.cc.NewStream(ctx, &NodeToMaster_ServiceDesc.Streams[0], "/master_node.NodeToMaster/KeepMeAlive", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &nodeToMasterKeepMeAliveClient{stream}
+	return x, nil
+}
+
+type NodeToMaster_KeepMeAliveClient interface {
+	Send(*HeartBeat) error
+	CloseAndRecv() (*emptypb.Empty, error)
+	grpc.ClientStream
+}
+
+type nodeToMasterKeepMeAliveClient struct {
+	grpc.ClientStream
+}
+
+func (x *nodeToMasterKeepMeAliveClient) Send(m *HeartBeat) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *nodeToMasterKeepMeAliveClient) CloseAndRecv() (*emptypb.Empty, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(emptypb.Empty)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *nodeToMasterClient) ConfirmUpload(ctx context.Context, in *FileUploadStatus, opts ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -57,7 +82,7 @@ func (c *nodeToMasterClient) ConfirmUpload(ctx context.Context, in *FileUploadSt
 // All implementations must embed UnimplementedNodeToMasterServer
 // for forward compatibility
 type NodeToMasterServer interface {
-	KeepMeAlive(context.Context, *HeartBeat) (*emptypb.Empty, error)
+	KeepMeAlive(NodeToMaster_KeepMeAliveServer) error
 	ConfirmUpload(context.Context, *FileUploadStatus) (*emptypb.Empty, error)
 	mustEmbedUnimplementedNodeToMasterServer()
 }
@@ -66,8 +91,8 @@ type NodeToMasterServer interface {
 type UnimplementedNodeToMasterServer struct {
 }
 
-func (UnimplementedNodeToMasterServer) KeepMeAlive(context.Context, *HeartBeat) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method KeepMeAlive not implemented")
+func (UnimplementedNodeToMasterServer) KeepMeAlive(NodeToMaster_KeepMeAliveServer) error {
+	return status.Errorf(codes.Unimplemented, "method KeepMeAlive not implemented")
 }
 func (UnimplementedNodeToMasterServer) ConfirmUpload(context.Context, *FileUploadStatus) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConfirmUpload not implemented")
@@ -85,22 +110,30 @@ func RegisterNodeToMasterServer(s grpc.ServiceRegistrar, srv NodeToMasterServer)
 	s.RegisterService(&NodeToMaster_ServiceDesc, srv)
 }
 
-func _NodeToMaster_KeepMeAlive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HeartBeat)
-	if err := dec(in); err != nil {
+func _NodeToMaster_KeepMeAlive_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(NodeToMasterServer).KeepMeAlive(&nodeToMasterKeepMeAliveServer{stream})
+}
+
+type NodeToMaster_KeepMeAliveServer interface {
+	SendAndClose(*emptypb.Empty) error
+	Recv() (*HeartBeat, error)
+	grpc.ServerStream
+}
+
+type nodeToMasterKeepMeAliveServer struct {
+	grpc.ServerStream
+}
+
+func (x *nodeToMasterKeepMeAliveServer) SendAndClose(m *emptypb.Empty) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *nodeToMasterKeepMeAliveServer) Recv() (*HeartBeat, error) {
+	m := new(HeartBeat)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(NodeToMasterServer).KeepMeAlive(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/master_node.NodeToMaster/KeepMeAlive",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeToMasterServer).KeepMeAlive(ctx, req.(*HeartBeat))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 func _NodeToMaster_ConfirmUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -129,15 +162,17 @@ var NodeToMaster_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*NodeToMasterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "KeepMeAlive",
-			Handler:    _NodeToMaster_KeepMeAlive_Handler,
-		},
-		{
 			MethodName: "ConfirmUpload",
 			Handler:    _NodeToMaster_ConfirmUpload_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "KeepMeAlive",
+			Handler:       _NodeToMaster_KeepMeAlive_Handler,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "master_node.proto",
 }
 

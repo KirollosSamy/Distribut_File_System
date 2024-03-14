@@ -6,14 +6,8 @@ package master_node;
 
 import "google/protobuf/empty.proto";
 
-enum ROLE {
-    SOURCE = 0;
-    DESTINATION = 1;
-}
-
 message ReplicateRequest {
-    ROLE role = 1;
-    string file_path = 2;
+    string filename = 2;
     string other_node_ip = 3;
     uint32 other_node_port = 4;
 }
@@ -33,7 +27,7 @@ message FileUploadStatus {
 }
 
 service NodeToMaster {
-    rpc KeepMeAlive(HeartBeat) returns (google.protobuf.Empty);
+    rpc KeepMeAlive(stream HeartBeat) returns (google.protobuf.Empty);
     rpc ConfirmUpload(FileUploadStatus) returns (google.protobuf.Empty);
 }
 

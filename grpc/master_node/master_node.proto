@@ -24,6 +24,7 @@ message RegisterNodeRequest {
 message FileUploadStatus {
     string file_name = 1;
     string file_path = 2;
+    int64 file_size = 3;
 }
 
 service NodeToMaster {

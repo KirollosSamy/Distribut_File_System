@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func UploadFile(conn net.Conn, filename string) {
@@ -32,30 +34,66 @@ func UploadFile(conn net.Conn, filename string) {
 	}
 }
 
-func DownloadFile(conn net.Conn) string {
+func UploadChunk(conn net.Conn) {
 	defer conn.Close()
 
-	// Read the filename from the client
 	reader := bufio.NewReader(conn)
 	filename, err := reader.ReadString('\n')
 	if err != nil {
 		log.Println("Error reading filename:", err)
-		return ""
+		return
 	}
 	filename = filename[:len(filename)-1]
 
-	file, err := os.Create("files/" + filename)
+	offset, err := reader.ReadString('\n')
 	if err != nil {
-		log.Println("Failed to create file:", err)
-		return ""
+		log.Println("Error reading offset:", err)
+		return
+	}
+	parts := strings.Split(strings.TrimSpace(offset), ":")
+    startOffset, _ := strconv.ParseInt(parts[0], 10, 64)
+    endOffset, _ := strconv.ParseInt(parts[1], 10, 64)
+
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Println("Failed to open file:", err)
+		return
 	}
 	defer file.Close()
 
-	_, err = io.Copy(file, conn)
+	_, err = file.Seek(startOffset, 0)
 	if err != nil {
-		log.Println("Error copying file:", err)
-		return ""
+		log.Println("Failed to seek in file:", err)
+		return
 	}
 
-	return filename
+	chunkReader := io.NewSectionReader(file, startOffset, endOffset-startOffset)
+	_, err = io.Copy(conn, chunkReader)
+	if err != nil {
+		log.Println("Error sending file data:", err)
+	}
+}
+
+func DownloadFile(conn net.Conn) (string, int64, error) {
+	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+	fileName, err := reader.ReadString('\n')
+	if err != nil {
+		return "", 0, err
+	}
+	fileName = fileName[:len(fileName)-1]
+
+	file, err := os.Create("files/" + fileName)
+	if err != nil {
+		return "", 0, err
+	}
+	defer file.Close()
+
+	fileSize, err := io.Copy(file, conn)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return fileName, fileSize, nil
 }

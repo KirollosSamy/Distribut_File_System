@@ -56,15 +56,21 @@ func pingMaster() {
 }
 
 func receiveFile(conn net.Conn) {
-	filename := utils.DownloadFile(conn)
+	fileName, fileSize, err := utils.DownloadFile(conn)
+
+	if err != nil {
+		log.Println("Error downloading file from client: ", err)
+		return
+	}
 
 	master.ConfirmUpload(context.Background(), &pb.FileUploadStatus{
-		FileName: filename,
-		FilePath: "files/" + filename,
+		FileName: fileName,
+		FilePath: "files/" + fileName,
+		FileSize: fileSize,
 	})
 }
 
-func runSocketServer() {
+func runUploadServer() {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", os.Getenv("NODE_UPLOAD_PORT")))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -77,6 +83,23 @@ func runSocketServer() {
 			log.Println("failed to listen:", err)
 		} else {
 			go receiveFile(conn)
+		}
+	}
+}
+
+func runDownloadServer() {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", os.Getenv("NODE_DOWNLOAD_PORT")))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	defer lis.Close()
+
+	for {
+		conn, err := lis.Accept()
+		if err != nil {
+			log.Println("failed to listen:", err)
+		} else {
+			go utils.UploadChunk(conn)
 		}
 	}
 }
@@ -107,7 +130,9 @@ func main() {
 
 	go pingMaster()
 
-	go runSocketServer()
+	go runUploadServer()
+
+	go runDownloadServer()
 
 	runGrpcServer()
 }

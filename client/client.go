@@ -154,6 +154,13 @@ func downloadChunk(ip string, startOffset, endOffset int64, filePath string, don
 		done <- err
 		return
 	}
+
+	// send start and end offset to server
+	_, err = conn.Write([]byte(fmt.Sprintf("%d,%d", startOffset, endOffset)))
+	if err != nil {
+		done <- err
+		return
+	}
 	
 	// Create or open the file to write
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)

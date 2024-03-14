@@ -1,0 +1,60 @@
+version: '3'
+
+services:
+  node_base:
+    build:
+      context: ./node
+      dockerfile: Dockerfile
+    container_name: node
+    ports:
+      - "4000:4000"
+      - "5000:5000"
+      - "6000:6000"
+    environment:
+      - MASTER_HOST=master
+      - MASTER_PORT=8000
+      - NODE_GRPC_PORT=4000
+      - NODE_UPLOAD_PORT=5000
+      - NODE_DOWNLOAD_PORT=6000
+    depends_on:
+      - master
+    # deploy:
+    #   replicas: 5
+
+  node1:
+    <<: *node_base
+    container_name: node1
+
+  node2:
+    <<: *node_base
+    container_name: node2
+
+  node3:
+    <<: *node_base
+    container_name: node3
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: client
+    environment:
+      - MASTER_HOST=master
+      - MASTER_PORT=8000
+      - NODE_UPLOAD_PORT=5000
+      - NODE_DOWNLOAD_PORT=6000
+    depends_on:
+      - master
+
+  master:
+    build:
+      context: ./master
+      dockerfile: Dockerfile
+    container_name: master
+    ports:
+      - "8000:8000"
+    environment:
+      - MASTER_PORT=8000
+      - NODES_COUNT=5
+      - NODES_HOSTS=node1,node2,node3
+

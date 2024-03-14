@@ -65,7 +65,7 @@ func receiveFile(conn net.Conn) {
 }
 
 func runSocketServer() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", os.Getenv("NODE_SOCKET_PORT")))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", os.Getenv("NODE_UPLOAD_PORT")))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -93,7 +93,7 @@ func runGrpcServer() {
 }
 
 func connectMaster() pb.NodeToMasterClient {
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", os.Getenv("MASTER_IP"), os.Getenv("MASTER_PORT")))
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", os.Getenv("MASTER_HOST"), os.Getenv("MASTER_PORT")))
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}

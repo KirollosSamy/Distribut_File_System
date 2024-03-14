@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"distributed_file_system/utils"
@@ -116,7 +117,9 @@ func runGrpcServer() {
 }
 
 func connectMaster() pb.NodeToMasterClient {
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", os.Getenv("MASTER_HOST"), os.Getenv("MASTER_PORT")))
+	masterAddress := fmt.Sprintf("%s:%s", os.Getenv("MASTER_HOST"), os.Getenv("MASTER_PORT"))
+	
+	conn, err := grpc.Dial(masterAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}

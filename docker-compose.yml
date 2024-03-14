@@ -1,15 +1,15 @@
 version: '3'
 
 services:
-  node_base:
+  node1: &node_base
     build:
-      context: ./node
-      dockerfile: Dockerfile
-    container_name: node
+      context: .
+      dockerfile: ./node/Dockerfile
+    container_name: node1
     ports:
-      - "4000:4000"
-      - "5000:5000"
-      - "6000:6000"
+      - "4001:4000"
+      - "5001:5000"
+      - "6001:6000"
     environment:
       - MASTER_HOST=master
       - MASTER_PORT=8000
@@ -21,22 +21,27 @@ services:
     # deploy:
     #   replicas: 5
 
-  node1:
-    <<: *node_base
-    container_name: node1
 
   node2:
     <<: *node_base
     container_name: node2
+    ports:
+      - "4002:4000"
+      - "5002:5000"
+      - "6002:6000"
 
   node3:
     <<: *node_base
     container_name: node3
+    ports:
+      - "4003:4000"
+      - "5003:5000"
+      - "6003:6000"
 
   client:
     build:
-      context: ./client
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./client/Dockerfile
     container_name: client
     environment:
       - MASTER_HOST=master
@@ -48,8 +53,8 @@ services:
 
   master:
     build:
-      context: ./master
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./master/Dockerfile
     container_name: master
     ports:
       - "8000:8000"

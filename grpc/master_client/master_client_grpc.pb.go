@@ -109,16 +109,16 @@ var MasterToClientService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	ClientToMasterService_UploadFile_FullMethodName   = "/master_client.ClientToMasterService/UploadFile"
-	ClientToMasterService_DownloadFile_FullMethodName = "/master_client.ClientToMasterService/DownloadFile"
+	ClientToMasterService_RequestToUpload_FullMethodName   = "/master_client.ClientToMasterService/RequestToUpload"
+	ClientToMasterService_RequestToDonwload_FullMethodName = "/master_client.ClientToMasterService/RequestToDonwload"
 )
 
 // ClientToMasterServiceClient is the client API for ClientToMasterService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ClientToMasterServiceClient interface {
-	UploadFile(ctx context.Context, in *UploadRequest, opts ...grpc.CallOption) (*AssignedPort, error)
-	DownloadFile(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (*DownloadResponse, error)
+	RequestToUpload(ctx context.Context, in *UploadRequest, opts ...grpc.CallOption) (*AssignedPort, error)
+	RequestToDonwload(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (*DownloadResponse, error)
 }
 
 type clientToMasterServiceClient struct {
@@ -129,18 +129,18 @@ func NewClientToMasterServiceClient(cc grpc.ClientConnInterface) ClientToMasterS
 	return &clientToMasterServiceClient{cc}
 }
 
-func (c *clientToMasterServiceClient) UploadFile(ctx context.Context, in *UploadRequest, opts ...grpc.CallOption) (*AssignedPort, error) {
+func (c *clientToMasterServiceClient) RequestToUpload(ctx context.Context, in *UploadRequest, opts ...grpc.CallOption) (*AssignedPort, error) {
 	out := new(AssignedPort)
-	err := c.cc.Invoke(ctx, ClientToMasterService_UploadFile_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ClientToMasterService_RequestToUpload_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *clientToMasterServiceClient) DownloadFile(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (*DownloadResponse, error) {
+func (c *clientToMasterServiceClient) RequestToDonwload(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (*DownloadResponse, error) {
 	out := new(DownloadResponse)
-	err := c.cc.Invoke(ctx, ClientToMasterService_DownloadFile_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ClientToMasterService_RequestToDonwload_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +151,8 @@ func (c *clientToMasterServiceClient) DownloadFile(ctx context.Context, in *Down
 // All implementations must embed UnimplementedClientToMasterServiceServer
 // for forward compatibility
 type ClientToMasterServiceServer interface {
-	UploadFile(context.Context, *UploadRequest) (*AssignedPort, error)
-	DownloadFile(context.Context, *DownloadRequest) (*DownloadResponse, error)
+	RequestToUpload(context.Context, *UploadRequest) (*AssignedPort, error)
+	RequestToDonwload(context.Context, *DownloadRequest) (*DownloadResponse, error)
 	mustEmbedUnimplementedClientToMasterServiceServer()
 }
 
@@ -160,11 +160,11 @@ type ClientToMasterServiceServer interface {
 type UnimplementedClientToMasterServiceServer struct {
 }
 
-func (UnimplementedClientToMasterServiceServer) UploadFile(context.Context, *UploadRequest) (*AssignedPort, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UploadFile not implemented")
+func (UnimplementedClientToMasterServiceServer) RequestToUpload(context.Context, *UploadRequest) (*AssignedPort, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestToUpload not implemented")
 }
-func (UnimplementedClientToMasterServiceServer) DownloadFile(context.Context, *DownloadRequest) (*DownloadResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DownloadFile not implemented")
+func (UnimplementedClientToMasterServiceServer) RequestToDonwload(context.Context, *DownloadRequest) (*DownloadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestToDonwload not implemented")
 }
 func (UnimplementedClientToMasterServiceServer) mustEmbedUnimplementedClientToMasterServiceServer() {}
 
@@ -179,38 +179,38 @@ func RegisterClientToMasterServiceServer(s grpc.ServiceRegistrar, srv ClientToMa
 	s.RegisterService(&ClientToMasterService_ServiceDesc, srv)
 }
 
-func _ClientToMasterService_UploadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ClientToMasterService_RequestToUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UploadRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientToMasterServiceServer).UploadFile(ctx, in)
+		return srv.(ClientToMasterServiceServer).RequestToUpload(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ClientToMasterService_UploadFile_FullMethodName,
+		FullMethod: ClientToMasterService_RequestToUpload_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientToMasterServiceServer).UploadFile(ctx, req.(*UploadRequest))
+		return srv.(ClientToMasterServiceServer).RequestToUpload(ctx, req.(*UploadRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ClientToMasterService_DownloadFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ClientToMasterService_RequestToDonwload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DownloadRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientToMasterServiceServer).DownloadFile(ctx, in)
+		return srv.(ClientToMasterServiceServer).RequestToDonwload(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ClientToMasterService_DownloadFile_FullMethodName,
+		FullMethod: ClientToMasterService_RequestToDonwload_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientToMasterServiceServer).DownloadFile(ctx, req.(*DownloadRequest))
+		return srv.(ClientToMasterServiceServer).RequestToDonwload(ctx, req.(*DownloadRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -223,12 +223,12 @@ var ClientToMasterService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ClientToMasterServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "UploadFile",
-			Handler:    _ClientToMasterService_UploadFile_Handler,
+			MethodName: "RequestToUpload",
+			Handler:    _ClientToMasterService_RequestToUpload_Handler,
 		},
 		{
-			MethodName: "DownloadFile",
-			Handler:    _ClientToMasterService_DownloadFile_Handler,
+			MethodName: "RequestToDonwload",
+			Handler:    _ClientToMasterService_RequestToDonwload_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

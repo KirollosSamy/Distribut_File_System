@@ -1,30 +1,29 @@
 package main
 
 import (
-	"context"
 	pb "distributed_file_system/grpc/master_client"
+	"context"
 	"fmt"
 	"io"
 	"net"
 	"os"
-	"strconv"
-
 	"google.golang.org/grpc"
 )
 
 func main() {
+
+	// Set up a connection to the server.
+	conn, err := grpc.Dial("localhost:2323", grpc.WithInsecure())
+	if err != nil {
+		fmt.Println("did not connect:", err)
+		return
+	}
+	defer conn.Close()
+
+	// Create a new client
+	client := pb.NewClientToMasterServiceClient(conn)
+
 	for {
-		// Set up a connection to the server.
-		conn, err := grpc.Dial("localhost:2323", grpc.WithInsecure())
-		if err != nil {
-			fmt.Println("did not connect:", err)
-			return
-		}
-		defer conn.Close()
-
-		// Create a new client
-		client := pb.NewClientToMasterServiceClient(conn)
-
 		// Ask user if he wants to upload or download a file
 		fmt.Println("Do you want to upload or download a file? (upload/download)")
 		var action string
@@ -35,43 +34,46 @@ func main() {
 			var filename string
 			fmt.Scanln(&filename)
 
-			// Upload request to server
-			resp, err := client.UploadFile(context.Background(), &pb.UploadRequest{Filename: filename})
+			// send upload request to server
+			resp, err := client.RequestToUpload(context.Background(), &pb.UploadRequest{Filename: filename})
 			if err != nil {
 				fmt.Println("UploadFile failed:", err)
-				return
+				break
 			}
 			fmt.Println("UploadFile Response:", resp)
 
-			// Open socket connection with the given port to upload the file to server
-			err = streamMP4File(int(resp.Port), "../files/"+filename)
-			if err != nil {
-				fmt.Println("Error streaming file:", err)
-				return
-			}
-			fmt.Println("File uploaded successfully")
+			// Open socket connection with the given IP to upload the file to server in a new goroutine
+			go func() {
+				err := streamMP4File(resp.Ip, "../files/" + filename + ".mp4")
+				if err != nil {
+					fmt.Println("Error streaming file:", err)
+					return
+				}
+				fmt.Println("File uploaded successfully")
+			}()
 
 		} else if action == "download" {
 			fmt.Println("Enter the filename to download:")
 			var filename string
 			fmt.Scanln(&filename)
 
-			// Download request to server
-			resp, err := client.DownloadFile(context.Background(), &pb.DownloadRequest{Filename: filename})
+			// send download request to server
+			resp, err := client.RequestToDonwload(context.Background(), &pb.DownloadRequest{Filename: filename})
 			if err != nil {
 				fmt.Println("DownloadFile failed:", err)
-				return
+				break
 			}
 			fmt.Println("DownloadFile Response:", resp)
 
-			// Download the file from the server
-
-			err = downloadStream(resp.IPs, "../files/"+filename, resp.Filesize)
-            if err != nil {
-                fmt.Println("Error downloading file:", err)
-                return
-            }
-            fmt.Println("File downloaded successfully")
+			// Download the file from the server in a new goroutine
+			go func() {
+				err = downloadStream(resp.IPs, "../files/" + filename + ".mp4", resp.Filesize)
+				if err != nil {
+					fmt.Println("Error downloading file:", err)
+					return
+				}
+				fmt.Println("File downloaded successfully")
+			}()
 
             
 		} else {
@@ -89,7 +91,8 @@ func main() {
 
 }
 
-func streamMP4File(port int, filePath string) error {
+// streamMP4File streams an MP4 file to the server on the specified port
+func streamMP4File(ip string, filePath string) error {
 	// Open the MP4 file
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -98,41 +101,41 @@ func streamMP4File(port int, filePath string) error {
 	defer file.Close()
 
 	// Start listening on the specified port
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	conn, err := net.Dial("tcp", ip)
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer conn.Close()
 
-	// Accept incoming connections
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			return err
-		}
-
-		// Start streaming the file data to the connection
-		go func(conn net.Conn) {
-			defer conn.Close()
-			buffer := make([]byte, 1024)
-			for {
-				bytesRead, err := file.Read(buffer)
-				if err != nil {
-					// End of file
-					if err == io.EOF {
-						break
-					}
-					fmt.Println("Error reading from file:", err)
-					return
-				}
-				_, err = conn.Write(buffer[:bytesRead])
-				if err != nil {
-					fmt.Println("Error writing to connection:", err)
-					return
-				}
-			}
-		}(conn)
+	// Send the file name to the server
+	_, err = conn.Write([]byte(filePath))
+	if err != nil {
+		return err
 	}
+
+	// Start streaming the file data to the connection
+	go func(conn net.Conn) {
+		defer conn.Close()
+		buffer := make([]byte, 1024)
+		for {
+			bytesRead, err := file.Read(buffer)
+			if err != nil {
+				// End of file
+				if err == io.EOF {
+					break
+				}
+				fmt.Println("Error reading from file:", err)
+				return
+			}
+			_, err = conn.Write(buffer[:bytesRead])
+			if err != nil {
+				fmt.Println("Error writing to connection:", err)
+				return
+			}
+		}
+	}(conn)
+
+	return nil
 }
 
 // downloadChunk downloads a chunk of the file from the server on the specified port
@@ -145,6 +148,13 @@ func downloadChunk(ip string, startOffset, endOffset int64, filePath string, don
 	}
 	defer conn.Close()
 
+	// send file name to server
+	_, err = conn.Write([]byte(filePath))
+	if err != nil {
+		done <- err
+		return
+	}
+	
 	// Create or open the file to write
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -169,7 +179,7 @@ func downloadChunk(ip string, startOffset, endOffset int64, filePath string, don
 	done <- nil // Signal success
 }
 
-// downloadFile downloads a file from the server by splitting it into chunks and downloading concurrently from multiple ports
+// downloadStream downloads a file from the server by splitting it into chunks and downloading concurrently from multiple ports
 func downloadStream(IPs []string, filePath string, chunkSize int64) error {
 	// Channel to communicate errors from goroutines
 	done := make(chan error)

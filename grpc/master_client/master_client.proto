@@ -7,6 +7,7 @@ package master_client;
 
 message DownloadRequest {
      string filename = 1;
+
 }
 
 message DownloadResponse {
@@ -21,7 +22,7 @@ message UploadRequest {
 }
 
 message AssignedPort {
-    string IP = 1;
+    string ip = 1;
     int32 port = 2;
 }
 
@@ -33,7 +34,7 @@ message Empty {}
 
 // i guess we don't need to complicate things this much
 message Machine {
-    string IP = 1;
+    string ip = 1;
     repeated int64 port = 2;
 }
 
@@ -43,7 +44,7 @@ service MasterToClientService {
 }
 
 service ClientToMasterService {
-    rpc UploadFile(UploadRequest) returns (AssignedPort);
-    rpc DownloadFile(DownloadRequest) returns (DownloadResponse);
+    rpc RequestToUpload(UploadRequest) returns (AssignedPort);
+    rpc RequestToDonwload(DownloadRequest) returns (DownloadResponse);
 }
 

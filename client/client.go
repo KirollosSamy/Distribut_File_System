@@ -11,18 +11,19 @@ import (
 )
 
 func main() {
+
+	// Set up a connection to the server.
+	conn, err := grpc.Dial("localhost:2323", grpc.WithInsecure())
+	if err != nil {
+		fmt.Println("did not connect:", err)
+		return
+	}
+	defer conn.Close()
+
+	// Create a new client
+	client := pb.NewClientToMasterServiceClient(conn)
+
 	for {
-		// Set up a connection to the server.
-		conn, err := grpc.Dial("localhost:2323", grpc.WithInsecure())
-		if err != nil {
-			fmt.Println("did not connect:", err)
-			return
-		}
-		defer conn.Close()
-
-		// Create a new client
-		client := pb.NewClientToMasterServiceClient(conn)
-
 		// Ask user if he wants to upload or download a file
 		fmt.Println("Do you want to upload or download a file? (upload/download)")
 		var action string
@@ -37,7 +38,7 @@ func main() {
 			resp, err := client.RequestToUpload(context.Background(), &pb.UploadRequest{Filename: filename})
 			if err != nil {
 				fmt.Println("UploadFile failed:", err)
-				return
+				break
 			}
 			fmt.Println("UploadFile Response:", resp)
 
@@ -60,7 +61,7 @@ func main() {
 			resp, err := client.RequestToDonwload(context.Background(), &pb.DownloadRequest{Filename: filename})
 			if err != nil {
 				fmt.Println("DownloadFile failed:", err)
-				return
+				break
 			}
 			fmt.Println("DownloadFile Response:", resp)
 

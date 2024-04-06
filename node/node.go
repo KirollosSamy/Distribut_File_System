@@ -24,9 +24,9 @@ type nodeServer struct {
 }
 
 type Config struct {
-	NodeUploadPort uint32 `josn:"NODE_UPLOAD_PORT"`
-	NodeDownloadPort uint32 `josn:"NODE_DOWNLOAD_PORT"`
-	NodeGrpcPort uint32 `josn:"NODE_GRPC_PORT"`
+	NodeUploadPort uint32 `json:"NODE_UPLOAD_PORT"`
+	NodeDownloadPort uint32 `json:"NODE_DOWNLOAD_PORT"`
+	NodeGrpcPort uint32 `json:"NODE_GRPC_PORT"`
 	MasterHost string `json:"MASTER_HOST"`
 	MasterPort uint32 `json:"MASTER_PORT"`
 }
@@ -57,7 +57,8 @@ func pingMaster() {
 }
 
 func receiveFile(conn net.Conn) {
-	fileName, fileSize, err := utils.DownloadFile(conn)
+	println("node receiving file")
+	fileName, fileSize, err := utils.DownloadFile(conn, fmt.Sprintf("files_%d", NodeId))
 
 	if err != nil {
 		log.Println("Error downloading file from client: ", err)
@@ -137,6 +138,7 @@ func registerNode() {
 		UploadPort: config.NodeUploadPort,
 		DownloadPort: config.NodeDownloadPort,
 	})
+
 	if err != nil {
 		log.Fatalf("can't register node %v", err)
 	}

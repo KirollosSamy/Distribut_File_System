@@ -12,10 +12,8 @@ import (
 )
 
 func main() {
-
-
 	// Set up a connection to the server.
-	conn, err := grpc.Dial("localhost:5000", grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:8000", grpc.WithInsecure())
 	if err != nil {
 		fmt.Println("did not connect:", err)
 		return
@@ -49,7 +47,7 @@ func main() {
 
 			// Open socket connection with the given IP to upload the file to server in a new goroutine
 			go func() {
-				err := streamMP4File(resp.Ip + ":" + fmt.Sprint(resp.Port), "../files/" + filename + ".mp4")
+				err := streamMP4File(resp.Ip + ":" + fmt.Sprint(resp.Port), "files/" + filename + ".mp4")
 				if err != nil {
 					fmt.Println("Error streaming file:", err)
 					return
@@ -109,6 +107,7 @@ func main() {
 
 // streamMP4File streams an MP4 file to the server on the specified port
 func streamMP4File(ip string, filePath string) error {
+	println(ip)
 	// Open the MP4 file
 	file, err := os.Open(filePath)
 	if err != nil {

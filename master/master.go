@@ -201,8 +201,8 @@ func(s *masterServer) RequestToUpload(ctx context.Context, req *masterPb.UploadR
 	var node Node
 
 	for {
-		randomNumber := rand.Intn(int(lastNodeId))
-		node := nodesLookupTable.Get(uint32(randomNumber))
+		randomNumber := rand.Intn(int(lastNodeId)) + 1
+		node = nodesLookupTable.Get(uint32(randomNumber))
 		if(node.isAlive){
 			break
 		}

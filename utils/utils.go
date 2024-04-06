@@ -75,7 +75,7 @@ func UploadChunk(conn net.Conn) {
 	}
 }
 
-func DownloadFile(conn net.Conn) (string, int64, error) {
+func DownloadFile(conn net.Conn, dir string) (string, int64, error) {
 	defer conn.Close()
 
 	reader := bufio.NewReader(conn)
@@ -85,7 +85,7 @@ func DownloadFile(conn net.Conn) (string, int64, error) {
 	}
 	fileName = fileName[:len(fileName)-1]
 
-	file, err := os.Create("files/" + fileName)
+	file, err := os.Create(dir + fileName)
 	if err != nil {
 		return "", 0, err
 	}

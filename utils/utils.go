@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -96,4 +97,29 @@ func DownloadFile(conn net.Conn) (string, int64, error) {
 	}
 
 	return fileName, fileSize, nil
+}
+
+func ParseConfig(filename string, config interface{}) {
+	configFile, err := os.Open(filename)
+    if err != nil {
+        log.Fatal("Error opening config file:", err)
+    }
+    defer configFile.Close()
+
+    decoder := json.NewDecoder(configFile)
+    if err := decoder.Decode(&config); err != nil {
+        log.Fatal("Error decoding config JSON:", err)
+    }
+}
+
+func GetMyIp() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+    if err != nil {
+        log.Fatalf("Error getting IP: %v", err)
+    }
+    defer conn.Close()
+
+    localAddr := conn.LocalAddr().(*net.UDPAddr)
+
+    return localAddr.IP
 }

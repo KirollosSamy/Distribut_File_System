@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	pb "distributed_file_system/grpc/master_node"
+	masterPb "distributed_file_system/grpc/master"
+	nodePb "distributed_file_system/grpc/node"
 	"fmt"
 	"log"
 	"net"
@@ -17,18 +18,23 @@ import (
 )
 
 var NodeId uint32
-var master pb.NodeToMasterClient
+var master masterPb.MasterClient
 
-type masterToNodeServer struct {
-	pb.UnimplementedMasterToNodeServer
+type nodeServer struct {
+	nodePb.UnimplementedNodeServer
 }
 
-func (s *masterToNodeServer) RegisterNode(ctx context.Context, req *pb.RegisterNodeRequest) (*emptypb.Empty, error) {
-	NodeId = req.NodeId
-	return &emptypb.Empty{}, nil
+type Config struct {
+	NodeUploadPort uint32 `josn:"NODE_UPLOAD_PORT"`
+	NodeDownloadPort uint32 `josn:"NODE_DOWNLOAD_PORT"`
+	NodeGrpcPort uint32 `josn:"NODE_GRPC_PORT"`
+	MasterHost string `json:"MASTER_HOST"`
+	MasterPort uint32 `json:"MASTER_PORT"`
 }
 
-func (s *masterToNodeServer) Replicate(ctx context.Context, req *pb.ReplicateRequest) (*emptypb.Empty, error) {
+var config Config
+
+func (s *nodeServer) Replicate(ctx context.Context, req *nodePb.ReplicateRequest) (*emptypb.Empty, error) {
 	address := fmt.Sprintf("%s:%d", req.OtherNodeIp, req.OtherNodePort)
 
 	conn, err := net.Dial("tcp", address)
@@ -51,7 +57,7 @@ func pingMaster() {
 	defer stream.CloseAndRecv()
 
 	for {
-		stream.Send(&pb.HeartBeat{NodeId: NodeId})
+		stream.Send(&masterPb.HeartBeat{NodeId: NodeId})
 		time.Sleep(time.Second)
 	}
 }
@@ -64,7 +70,7 @@ func receiveFile(conn net.Conn) {
 		return
 	}
 
-	master.ConfirmUpload(context.Background(), &pb.FileUploadStatus{
+	master.ConfirmUpload(context.Background(), &masterPb.FileUploadStatus{
 		FileName: fileName,
 		FilePath: "files/" + fileName,
 		FileSize: fileSize,
@@ -72,7 +78,7 @@ func receiveFile(conn net.Conn) {
 }
 
 func runUploadServer() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", os.Getenv("NODE_UPLOAD_PORT")))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", config.NodeUploadPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -89,7 +95,7 @@ func runUploadServer() {
 }
 
 func runDownloadServer() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", os.Getenv("NODE_DOWNLOAD_PORT")))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", config.NodeDownloadPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -106,18 +112,18 @@ func runDownloadServer() {
 }
 
 func runGrpcServer() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", os.Getenv("NODE_GRPC_PORT")))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", config.NodeGrpcPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterMasterToNodeServer(grpcServer, &masterToNodeServer{})
+	nodePb.RegisterNodeServer(grpcServer, &nodeServer{})
 	grpcServer.Serve(lis)
 }
 
-func connectMaster() pb.NodeToMasterClient {
-	masterAddress := fmt.Sprintf("%s:%s", os.Getenv("MASTER_HOST"), os.Getenv("MASTER_PORT"))
+func connectMaster() masterPb.MasterClient {
+	masterAddress := fmt.Sprintf("%s:%d", config.MasterHost, config.MasterPort)
 	
 	conn, err := grpc.Dial(masterAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -125,16 +131,32 @@ func connectMaster() pb.NodeToMasterClient {
 	}
 	defer conn.Close()
 
-	return pb.NewNodeToMasterClient(conn)
+	registerNode()
+
+	return masterPb.NewMasterClient(conn)
+}
+
+func registerNode() {
+	response, err := master.RegisterNode(context.Background(), &masterPb.RegisterRequest{
+		Ip: utils.GetMyIp().String(),
+		GrpcPort: config.NodeGrpcPort,
+		UploadPort: config.NodeUploadPort,
+		DownloadPort: config.NodeDownloadPort,
+	})
+	if err != nil {
+		log.Fatalf("can't register node %v", err)
+	}
+
+	NodeId = response.NodeId
 }
 
 func main() {
+	utils.ParseConfig(os.Args[1], &config)
+
 	master = connectMaster()
 
 	go pingMaster()
-
 	go runUploadServer()
-
 	go runDownloadServer()
 
 	runGrpcServer()

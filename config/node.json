@@ -1,0 +1,8 @@
+{
+    "NODE_UPLOAD_PORT": 4000,
+    "NODE_DOWNLOAD_PORT": 5000,
+    "NODE_GRPC_PORT": 6000,
+    "MASTER_HOST": "localhost",
+    "MASTER_PORT": 8000
+  }
+  

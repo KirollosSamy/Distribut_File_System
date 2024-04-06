@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+option go_package = "distributed_file_system/grpc/master";
+
+package master;
+
+import "google/protobuf/empty.proto";
+
+message HeartBeat {
+    uint32 node_id = 1;
+}
+
+message RegisterRequest {
+    string ip = 1;
+    uint32 grpc_port = 2;
+    uint32 download_port = 3;
+    uint32 upload_port = 4;
+}
+
+message RegisterResponse {
+    uint32 node_id = 1;
+}
+
+message FileUploadStatus {
+    string file_name = 1;
+    string file_path = 2;
+    int64 file_size = 3;
+}
+
+message DownloadRequest {
+    string filename = 1;
+}
+
+message DownloadResponse {
+   repeated HostAddress nodes_addresses = 1;
+   int64 filesize = 2;
+}
+
+message UploadRequest {
+   string filename = 1;
+}
+
+message HostAddress {
+   string ip = 1;
+   uint32 port = 2;
+}
+
+service Master {
+    rpc KeepMeAlive(stream HeartBeat) returns (google.protobuf.Empty);
+    rpc ConfirmUpload(FileUploadStatus) returns (google.protobuf.Empty);
+    rpc RegisterNode(RegisterRequest) returns (RegisterRequest);
+    rpc RequestToUpload(UploadRequest) returns (HostAddress);
+    rpc RequestToDonwload(DownloadRequest) returns (DownloadResponse);
+}

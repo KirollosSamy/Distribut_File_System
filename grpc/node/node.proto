@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package = "distributed_file_system/grpc/node";
+
+package node;
+
+import "google/protobuf/empty.proto";
+
+message ReplicateRequest {
+    string filename = 2;
+    string other_node_ip = 3;
+    uint32 other_node_port = 4;
+}
+
+service Node {
+    rpc Replicate(ReplicateRequest) returns (google.protobuf.Empty);
+}

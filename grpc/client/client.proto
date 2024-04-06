@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+option go_package = "distributed_file_system/grpc/client";
+
+package client;
+
+message Success {
+    bool success = 1;
+}
+
+message Empty {}
+
+service Client {
+    rpc UploadSuccess(Success) returns (Empty);
+}
+

@@ -25,7 +25,7 @@ const _ = grpc.SupportPackageIsVersion7
 type MasterClient interface {
 	KeepMeAlive(ctx context.Context, opts ...grpc.CallOption) (Master_KeepMeAliveClient, error)
 	ConfirmUpload(ctx context.Context, in *FileUploadStatus, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	RegisterNode(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterRequest, error)
+	RegisterNode(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	RequestToUpload(ctx context.Context, in *UploadRequest, opts ...grpc.CallOption) (*HostAddress, error)
 	RequestToDonwload(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (*DownloadResponse, error)
 }
@@ -81,8 +81,8 @@ func (c *masterClient) ConfirmUpload(ctx context.Context, in *FileUploadStatus, 
 	return out, nil
 }
 
-func (c *masterClient) RegisterNode(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterRequest, error) {
-	out := new(RegisterRequest)
+func (c *masterClient) RegisterNode(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
+	out := new(RegisterResponse)
 	err := c.cc.Invoke(ctx, "/master.Master/RegisterNode", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (c *masterClient) RequestToDonwload(ctx context.Context, in *DownloadReques
 type MasterServer interface {
 	KeepMeAlive(Master_KeepMeAliveServer) error
 	ConfirmUpload(context.Context, *FileUploadStatus) (*emptypb.Empty, error)
-	RegisterNode(context.Context, *RegisterRequest) (*RegisterRequest, error)
+	RegisterNode(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	RequestToUpload(context.Context, *UploadRequest) (*HostAddress, error)
 	RequestToDonwload(context.Context, *DownloadRequest) (*DownloadResponse, error)
 	mustEmbedUnimplementedMasterServer()
@@ -130,7 +130,7 @@ func (UnimplementedMasterServer) KeepMeAlive(Master_KeepMeAliveServer) error {
 func (UnimplementedMasterServer) ConfirmUpload(context.Context, *FileUploadStatus) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConfirmUpload not implemented")
 }
-func (UnimplementedMasterServer) RegisterNode(context.Context, *RegisterRequest) (*RegisterRequest, error) {
+func (UnimplementedMasterServer) RegisterNode(context.Context, *RegisterRequest) (*RegisterResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterNode not implemented")
 }
 func (UnimplementedMasterServer) RequestToUpload(context.Context, *UploadRequest) (*HostAddress, error) {

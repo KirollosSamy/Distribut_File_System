@@ -68,6 +68,7 @@ func receiveFile(conn net.Conn) {
 		FileName: fileName,
 		FilePath: "files/" + fileName,
 		FileSize: fileSize,
+		NodeId: NodeId,
 	})
 }
 
@@ -116,16 +117,17 @@ func runGrpcServer() {
 	grpcServer.Serve(lis)
 }
 
-func connectMaster() masterPb.MasterClient {
+func connectMaster() *grpc.ClientConn {
 	masterAddress := fmt.Sprintf("%s:%d", config.MasterHost, config.MasterPort)
 	
 	conn, err := grpc.Dial(masterAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}
-	defer conn.Close()
 
-	return masterPb.NewMasterClient(conn)
+	master = masterPb.NewMasterClient(conn)
+
+	return conn
 }
 
 func registerNode() {
@@ -144,12 +146,16 @@ func registerNode() {
 func main() {
 	utils.ParseConfig("config/node.json", &config)
 
-	master = connectMaster()
+	conn := connectMaster()
+	defer conn.Close()
+
 	registerNode()
 
-	go pingMaster()
-	go runUploadServer()
-	go runDownloadServer()
+	fmt.Println("node registered")
 
-	runGrpcServer()
+	go pingMaster()
+	// go runUploadServer()
+	// go runDownloadServer()
+
+	// runGrpcServer()
 }

@@ -14,7 +14,9 @@ func NewSafeMap[K comparable, V any]() *SafeMap[K, V] {
 }
 
 func (sm* SafeMap[K, V]) Set(key K, value V) {
+	println("before locking")
 	sm.mutx.Lock()
+	println("after locking")
 	defer sm.mutx.Unlock()
 	sm.data[key] = value
 }

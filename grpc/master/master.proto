@@ -25,6 +25,7 @@ message FileUploadStatus {
     string file_name = 1;
     string file_path = 2;
     int64 file_size = 3;
+    uint32 node_id = 4;
 }
 
 message DownloadRequest {

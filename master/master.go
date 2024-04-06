@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	// clientPb "distributed_file_system/grpc/client"
 	masterPb "distributed_file_system/grpc/master"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"time"
 
 	"google.golang.org/grpc"
+	// "google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"distributed_file_system/utils"
@@ -23,7 +26,8 @@ var config Config
 //first one for files
 type FileData struct {
     filePath string
-    dataKeeperId int
+    dataKeeperId uint32
+	fileSize int64
 }
 
 //Then define lookup table for nodes
@@ -63,13 +67,26 @@ func(s *masterServer) KeepMeAlive(ctx context.Context, req *masterPb.HeartBeat) 
 }
 
 func(s *masterServer) ConfirmUpload(ctx context.Context, req *masterPb.FileUploadStatus) (*emptypb.Empty, error) {
+	//Add File Data To Table -> Add data file entry
+	var fileData []FileData
 	
+	fileData = append(fileData, FileData{
+		filePath: req.FilePath,
+		dataKeeperId: req.NodeId,
+		fileSize: req.FileSize,
+	})
+	
+	fileLookupTable.Set(req.FileName, fileData)
+
+	// notify client of success
+
 	return &emptypb.Empty{}, nil 
 }
 
 func(s *masterServer) RegisterNode(ctx context.Context, req *masterPb.RegisterRequest) (*masterPb.RegisterResponse, error) {
 	//Here we should add the node to nodes lookup table
 	//Add the new node id
+	fmt.Println("inside RegisterNode")
 	lastNodeId++
 	nodeId := lastNodeId
 	//start a timer that defines if the node will be killed or not
@@ -156,27 +173,35 @@ func(s *masterServer) RequestToUpload(ctx context.Context, req *masterPb.UploadR
 	//Here we should look for all the nodes available that has that file
 	//Firstly as we initialize nodeIds from 0 and increment it, then we want to generate a random number from 0 to lastIdx to select a randomly datakeeper
 	rand.Seed(time.Now().UnixNano())
-	randomNumber := rand.Intn(lastNodeId) // Generates a random number between 0 and last node id inclusive
-	//Keep looping until we found a node that works
-	while(nodesLookupTable[randomNumber].isAlive==false){
-		randomNumber = rand.Intn(lastNodeId)
+	var node Node
+
+	for {
+		randomNumber := rand.Intn(int(lastNodeId))
+		node := nodesLookupTable.Get(uint32(randomNumber))
+		if(node.isAlive){
+			break
+		}
 	}
-	//Get the upload port of that node
-    uploadPort = nodesLookupTable[randomNumber].uploadPort
 	//Reply to the client with node's ip and host
-	return &masterPb.HostAddress{ip:nodesLookupTable[randomNumber].ip,port:nodesLookupTable[randomNumber].}, nil
+	return &masterPb.HostAddress{
+		Ip: node.ip,
+		Port:node.uploadPort,
+	}, nil
 }
 
 func(s *masterServer) RequestToDonwload(ctx context.Context, req *masterPb.DownloadRequest) (*masterPb.DownloadResponse, error) {
-	fileName := req.filename
-	fileData := fileLookupTable[fileName]
-	var addresses[]string;
-	for(int i=0; i<len(dataKeepers); i++) {
-		if(nodesLookupTable[fileData[i].dataKeeperId].isAlive ==true){
-			addresses = append(addresses, fmt.Sprintf("%s:%s",nodesLookupTable[fileData[i].dataKeeperId].ip,nodesLookupTable[fileData[i].dataKeeper].downloadPort))
+	fileName := req.Filename
+	fileData := fileLookupTable.Get(fileName)
+	var addresses[]*masterPb.HostAddress;
+	
+	for i:=0; i<len(fileData); i++ {
+		nodeId:= fileData[i].dataKeeperId
+		node := nodesLookupTable.Get((uint32(nodeId)))
+		if(node.isAlive){
+			addresses = append(addresses, &masterPb.HostAddress{Ip: node.ip, Port: node.downloadPort})
 		}
 	}
-	return &masterPb.DownloadResponse{nodes_addresses:addresses}, nil
+	return &masterPb.DownloadResponse{NodesAddresses: addresses, Filesize: fileData[0].fileSize}, nil
 }
 
 func waitForTimer(timer *time.Timer, nodeId uint32) {
@@ -187,21 +212,33 @@ func waitForTimer(timer *time.Timer, nodeId uint32) {
 }
 
 func runGrpcServer() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", config.MasterPort))
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 8000))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	grpcServer := grpc.NewServer()
 	masterPb.RegisterMasterServer(grpcServer, &masterServer{})
+
+	fmt.Printf("server running")
 	grpcServer.Serve(lis)
 }
 
+// func connectClient() clientPb.ClientClient {
+// 	clientAddress := fmt.Sprintf("%s:%d", "host", 1247578)
+	
+// 	conn, err := grpc.Dial(clientAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+// 	if err != nil {
+// 		log.Fatalf("failed to connect: %v", err)
+// 	}
+// 	defer conn.Close()
+
+// 	return clientPb.NewClientClient(conn)
+// }
 
 func main() {
 	utils.ParseConfig("config/master.json", &config)
-
-
+	println(config.MasterPort)
 	runGrpcServer()
 	go checkIfAlive()
 }

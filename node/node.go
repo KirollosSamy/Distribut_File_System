@@ -154,8 +154,8 @@ func main() {
 	fmt.Println("node registered")
 
 	go pingMaster()
-	// go runUploadServer()
-	// go runDownloadServer()
+	go runUploadServer()
+	go runDownloadServer()
 
-	// runGrpcServer()
+	runGrpcServer()
 }

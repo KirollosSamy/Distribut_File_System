@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"google.golang.org/grpc"
@@ -50,14 +49,9 @@ func (s *nodeServer) Replicate(ctx context.Context, req *nodePb.ReplicateRequest
 }
 
 func pingMaster() {
-	stream, err := master.KeepMeAlive(context.Background())
-	if err != nil {
-		log.Fatalf("can't ping master %v", err)
-	}
-	defer stream.CloseAndRecv()
-
+	heartBeat := &masterPb.HeartBeat{NodeId: NodeId}
 	for {
-		stream.Send(&masterPb.HeartBeat{NodeId: NodeId})
+		master.KeepMeAlive(context.Background(), heartBeat)
 		time.Sleep(time.Second)
 	}
 }
@@ -131,8 +125,6 @@ func connectMaster() masterPb.MasterClient {
 	}
 	defer conn.Close()
 
-	registerNode()
-
 	return masterPb.NewMasterClient(conn)
 }
 
@@ -146,14 +138,14 @@ func registerNode() {
 	if err != nil {
 		log.Fatalf("can't register node %v", err)
 	}
-
 	NodeId = response.NodeId
 }
 
 func main() {
-	utils.ParseConfig(os.Args[1], &config)
+	utils.ParseConfig("config/node.json", &config)
 
 	master = connectMaster()
+	registerNode()
 
 	go pingMaster()
 	go runUploadServer()

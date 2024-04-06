@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MasterClient interface {
-	KeepMeAlive(ctx context.Context, opts ...grpc.CallOption) (Master_KeepMeAliveClient, error)
+	KeepMeAlive(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ConfirmUpload(ctx context.Context, in *FileUploadStatus, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RegisterNode(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	RequestToUpload(ctx context.Context, in *UploadRequest, opts ...grpc.CallOption) (*HostAddress, error)
@@ -38,38 +38,13 @@ func NewMasterClient(cc grpc.ClientConnInterface) MasterClient {
 	return &masterClient{cc}
 }
 
-func (c *masterClient) KeepMeAlive(ctx context.Context, opts ...grpc.CallOption) (Master_KeepMeAliveClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Master_ServiceDesc.Streams[0], "/master.Master/KeepMeAlive", opts...)
+func (c *masterClient) KeepMeAlive(ctx context.Context, in *HeartBeat, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/master.Master/KeepMeAlive", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &masterKeepMeAliveClient{stream}
-	return x, nil
-}
-
-type Master_KeepMeAliveClient interface {
-	Send(*HeartBeat) error
-	CloseAndRecv() (*emptypb.Empty, error)
-	grpc.ClientStream
-}
-
-type masterKeepMeAliveClient struct {
-	grpc.ClientStream
-}
-
-func (x *masterKeepMeAliveClient) Send(m *HeartBeat) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *masterKeepMeAliveClient) CloseAndRecv() (*emptypb.Empty, error) {
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	m := new(emptypb.Empty)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 func (c *masterClient) ConfirmUpload(ctx context.Context, in *FileUploadStatus, opts ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -112,7 +87,7 @@ func (c *masterClient) RequestToDonwload(ctx context.Context, in *DownloadReques
 // All implementations must embed UnimplementedMasterServer
 // for forward compatibility
 type MasterServer interface {
-	KeepMeAlive(Master_KeepMeAliveServer) error
+	KeepMeAlive(context.Context, *HeartBeat) (*emptypb.Empty, error)
 	ConfirmUpload(context.Context, *FileUploadStatus) (*emptypb.Empty, error)
 	RegisterNode(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	RequestToUpload(context.Context, *UploadRequest) (*HostAddress, error)
@@ -124,8 +99,8 @@ type MasterServer interface {
 type UnimplementedMasterServer struct {
 }
 
-func (UnimplementedMasterServer) KeepMeAlive(Master_KeepMeAliveServer) error {
-	return status.Errorf(codes.Unimplemented, "method KeepMeAlive not implemented")
+func (UnimplementedMasterServer) KeepMeAlive(context.Context, *HeartBeat) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method KeepMeAlive not implemented")
 }
 func (UnimplementedMasterServer) ConfirmUpload(context.Context, *FileUploadStatus) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ConfirmUpload not implemented")
@@ -152,30 +127,22 @@ func RegisterMasterServer(s grpc.ServiceRegistrar, srv MasterServer) {
 	s.RegisterService(&Master_ServiceDesc, srv)
 }
 
-func _Master_KeepMeAlive_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(MasterServer).KeepMeAlive(&masterKeepMeAliveServer{stream})
-}
-
-type Master_KeepMeAliveServer interface {
-	SendAndClose(*emptypb.Empty) error
-	Recv() (*HeartBeat, error)
-	grpc.ServerStream
-}
-
-type masterKeepMeAliveServer struct {
-	grpc.ServerStream
-}
-
-func (x *masterKeepMeAliveServer) SendAndClose(m *emptypb.Empty) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *masterKeepMeAliveServer) Recv() (*HeartBeat, error) {
-	m := new(HeartBeat)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Master_KeepMeAlive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HeartBeat)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(MasterServer).KeepMeAlive(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/master.Master/KeepMeAlive",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterServer).KeepMeAlive(ctx, req.(*HeartBeat))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Master_ConfirmUpload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -258,6 +225,10 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MasterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "KeepMeAlive",
+			Handler:    _Master_KeepMeAlive_Handler,
+		},
+		{
 			MethodName: "ConfirmUpload",
 			Handler:    _Master_ConfirmUpload_Handler,
 		},
@@ -274,12 +245,6 @@ var Master_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Master_RequestToDonwload_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "KeepMeAlive",
-			Handler:       _Master_KeepMeAlive_Handler,
-			ClientStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "master.proto",
 }

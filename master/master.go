@@ -33,7 +33,8 @@ type Node struct {
     grpcPort uint32
 	ip string
 	isAlive bool
-	timer *time.Timer
+	//timer *time.Timer
+	heartBeat int
 	// lastTimeToBing string
 }
 
@@ -48,11 +49,15 @@ type masterServer struct {
 	masterPb.UnimplementedMasterServer
 }
 
+
+
 func(s *masterServer) KeepMeAlive(ctx context.Context, req *masterPb.HeartBeat) (*emptypb.Empty, error) {
 	// restart the timer of that node
 	nodeId := req.NodeId
-	timer := nodesLookupTable.Get(nodeId).timer
-	timer.Reset(time.Second)
+	//timer := nodesLookupTable.Get(nodeId).timer
+	//timer.Reset(time.Second)
+	node = nodesLookupTable.Get(nodeId)
+	node.heartBeat+=1
 
 	return &emptypb.Empty{}, nil 
 }
@@ -86,6 +91,65 @@ func(s *masterServer) RegisterNode(ctx context.Context, req *masterPb.RegisterRe
 	//Return response to the node which is it's Id
 	res := &masterPb.RegisterResponse{NodeId: nodeId}
 	return res, nil
+}
+
+func getTwoRandomNodes(existingDataNode int32)int32{
+	nodeIds := make([]int32,2)
+	nodeIds[0] := int32(rand.Intn(lastNodeId))
+	for(nodeIds[0]==existingDataNode ||!nodesLookupTable.Get(nodeIds[0]) )
+		nodeIds[0] = int32(rand.Intn(lastNodeId))
+
+	nodeIds[1] :=  int32(rand.Intn(lastNodeId))
+	for(nodeIds[1]==existingDataNode || nodeIds[1]==nodeIds[0]||!nodesLookupTable.Get(nodeIds[0]) )
+		nodeIds[1] = int32(rand.Intn(lastNodeId))
+	return nodeIds
+}
+
+func getRandomNode(existingDateNode int32)int32{
+	nodeId := int32(rand.Intn(lastNodeId))
+	for(nodeId==existingDataNode ||!nodesLookupTable.Get(nodeId) )
+		nodeId = int32(rand.Intn(lastNodeId))
+	return nodeId
+}
+
+func getNumOfAliveNodes()int{
+	count:=0
+	for_,nodeId := range lastNodeId{
+		if(nodesLookupTable.Get(nodeId).isAlive)
+			count++
+	}
+	return count
+}
+
+func selectNodeToReplicate(fileName string, dataNodeId int32){
+	aliveCnt := getNumOfAliveNodes()
+
+	if aliveCnt == 1{
+		fmt.Println("There is only one alive data node. Cannot replicate the file.")
+		return
+	}else if aliveCnt == 2{
+		fmt.Println("There are only two alive data nodes. Replicating the file to the other node.")
+		nodeId := getRandomNode(dataNodeId)
+		//Here we should call the data keeper to replicate the file with that one only
+	}else{
+		nodeIds := getTwoRandomNodes(dataNodeId)
+		//Here we should call the data keeper to replicate the file for the two nodes
+	}
+}
+
+func checkIfAlive(){
+	for{
+		time.sleep(3*time.Second)
+		for i := range lastNodeId{
+			node := nodesLookupTable.Get(i)
+			if(node.heartBeat == 0){
+				node.isAlive = false
+			} else{
+				node.isAlive = true
+			}
+			node.heartBeat = 0
+		}
+	}
 }
 
 func(s *masterServer) RequestToUpload(ctx context.Context, req *masterPb.UploadRequest) (*masterPb.HostAddress, error) {
@@ -139,4 +203,5 @@ func main() {
 
 
 	runGrpcServer()
+	go checkIfAlive()
 }

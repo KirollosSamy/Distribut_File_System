@@ -64,11 +64,13 @@ func(s *masterServer) ConfirmUpload(ctx context.Context, req *masterPb.FileUploa
 
 func(s *masterServer) RegisterNode(ctx context.Context, req *masterPb.RegisterRequest) (*masterPb.RegisterResponse, error) {
 	//Here we should add the node to nodes lookup table
+	//Add the new node id
 	lastNodeId++
 	nodeId := lastNodeId
-
+	//start a timer that defines if the node will be killed or not
 	timer := time.NewTimer(time.Second)
-
+	//Create a new Node in which we will have all the needed data as tcp download and upload ports , and grpc port , and also its ip
+	//Then we define the node's status if its alive or not then the timer which will be used to kill it
 	node := Node{
 		downloadPort: req.DownloadPort,
 		uploadPort: req.UploadPort,
@@ -77,23 +79,40 @@ func(s *masterServer) RegisterNode(ctx context.Context, req *masterPb.RegisterRe
 		isAlive: true,
 		timer: timer,
 	}
+	//Add the new Node
 	nodesLookupTable.Set(nodeId, node)
-
+	//Wait For Timer
 	go waitForTimer(timer, nodeId)
-
+	//Return response to the node which is it's Id
 	res := &masterPb.RegisterResponse{NodeId: nodeId}
 	return res, nil
 }
 
 func(s *masterServer) RequestToUpload(ctx context.Context, req *masterPb.UploadRequest) (*masterPb.HostAddress, error) {
 	//Here we should look for all the nodes available that has that file
-
-	return &masterPb.HostAddress{}, nil
+	//Firstly as we initialize nodeIds from 0 and increment it, then we want to generate a random number from 0 to lastIdx to select a randomly datakeeper
+	rand.Seed(time.Now().UnixNano())
+	randomNumber := rand.Intn(lastNodeId) // Generates a random number between 0 and last node id inclusive
+	//Keep looping until we found a node that works
+	while(nodesLookupTable[randomNumber].isAlive==false){
+		randomNumber = rand.Intn(lastNodeId)
+	}
+	//Get the upload port of that node
+    uploadPort = nodesLookupTable[randomNumber].uploadPort
+	//Reply to the client with node's ip and host
+	return &masterPb.HostAddress{ip:nodesLookupTable[randomNumber].ip,port:nodesLookupTable[randomNumber].}, nil
 }
 
 func(s *masterServer) RequestToDonwload(ctx context.Context, req *masterPb.DownloadRequest) (*masterPb.DownloadResponse, error) {
-	
-	return &masterPb.DownloadResponse{}, nil
+	fileName := req.filename
+	fileData := fileLookupTable[fileName]
+	var addresses[]string;
+	for(int i=0; i<len(dataKeepers); i++) {
+		if(nodesLookupTable[fileData[i].dataKeeperId].isAlive ==true){
+			addresses = append(addresses, fmt.Sprintf("%s:%s",nodesLookupTable[fileData[i].dataKeeperId].ip,nodesLookupTable[fileData[i].dataKeeper].downloadPort))
+		}
+	}
+	return &masterPb.DownloadResponse{nodes_addresses:addresses}, nil
 }
 
 func waitForTimer(timer *time.Timer, nodeId uint32) {
@@ -118,8 +137,6 @@ func runGrpcServer() {
 func main() {
 	utils.ParseConfig("config/master.json", &config)
 
-	fileLookupTable = utils.NewSafeMap[string, []FileData]()
-	nodesLookupTable = utils.NewSafeMap[uint32, Node]()
 
 	runGrpcServer()
 }

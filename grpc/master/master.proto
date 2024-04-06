@@ -46,9 +46,9 @@ message HostAddress {
 }
 
 service Master {
-    rpc KeepMeAlive(HeartBeat) returns (google.protobuf.Empty);
+    rpc KeepMeAlive(HeartBeat) returns (google.protobuf.Empty);//DONE
     rpc ConfirmUpload(FileUploadStatus) returns (google.protobuf.Empty);
-    rpc RegisterNode(RegisterRequest) returns (RegisterResponse);
-    rpc RequestToUpload(UploadRequest) returns (HostAddress);
-    rpc RequestToDonwload(DownloadRequest) returns (DownloadResponse);
+    rpc RegisterNode(RegisterRequest) returns (RegisterResponse);//DONE 
+    rpc RequestToUpload(UploadRequest) returns (HostAddress);//DONE
+    rpc RequestToDonwload(DownloadRequest) returns (DownloadResponse);//DONE
 }

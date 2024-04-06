@@ -1,13 +1,15 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	client "distributed_file_system/grpc/client"
 	master "distributed_file_system/grpc/master"
-	"context"
 	"fmt"
 	"io"
 	"net"
 	"os"
+
 	"google.golang.org/grpc"
 )
 
@@ -47,7 +49,7 @@ func main() {
 
 			// Open socket connection with the given IP to upload the file to server in a new goroutine
 			go func() {
-				err := streamMP4File(resp.Ip + ":" + fmt.Sprint(resp.Port), "files/" + filename + ".mp4")
+				err := streamMP4File(resp.Ip + ":" + fmt.Sprint(resp.Port), filename)
 				if err != nil {
 					fmt.Println("Error streaming file:", err)
 					return
@@ -106,24 +108,24 @@ func main() {
 }
 
 // streamMP4File streams an MP4 file to the server on the specified port
-func streamMP4File(ip string, filePath string) error {
+func streamMP4File(ip string, filename string) error {
 	println(ip)
 	// Open the MP4 file
-	file, err := os.Open(filePath)
+	file, err := os.Open("files/" + filename + ".mp4")
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	// defer file.Close()
 
 	// Start listening on the specified port
 	conn, err := net.Dial("tcp", ip)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	// defer conn.Close()
 
 	// Send the file name to the server
-	_, err = conn.Write([]byte(filePath))
+	_, err = conn.Write([]byte(filename + ".mp4" + "\n"))
 	if err != nil {
 		return err
 	}
@@ -131,23 +133,32 @@ func streamMP4File(ip string, filePath string) error {
 	// Start streaming the file data to the connection
 	go func(conn net.Conn) {
 		defer conn.Close()
-		buffer := make([]byte, 1024)
-		for {
-			bytesRead, err := file.Read(buffer)
-			if err != nil {
-				// End of file
-				if err == io.EOF {
-					break
-				}
-				fmt.Println("Error reading from file:", err)
-				return
-			}
-			_, err = conn.Write(buffer[:bytesRead])
-			if err != nil {
-				fmt.Println("Error writing to connection:", err)
-				return
-			}
+		defer file.Close()
+
+		reader := bufio.NewReader(file)
+		_, err = reader.WriteTo(conn)
+		if err != nil {
+			fmt.Println("Error uploading file:", err)
+			return
 		}
+
+		// buffer := make([]byte, 1024)
+		// for {
+		// 	bytesRead, err := file.Read(buffer)
+		// 	if err != nil {
+		// 		// End of file
+		// 		if err == io.EOF {
+		// 			break
+		// 		}
+		// 		fmt.Println("Error reading from file:", err)
+		// 		return
+		// 	}
+		// 	_, err = conn.Write(buffer[:bytesRead])
+		// 	if err != nil {
+		// 		fmt.Println("Error writing to connection:", err)
+		// 		return
+		// 	}
+		// }
 	}(conn)
 
 	return nil

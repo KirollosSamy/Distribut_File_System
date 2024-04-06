@@ -1,7 +1,8 @@
 package main
 
 import (
-	pb "distributed_file_system/grpc/master_client"
+	client "distributed_file_system/grpc/client"
+	master "distributed_file_system/grpc/master"
 	"context"
 	"fmt"
 	"io"
@@ -12,8 +13,9 @@ import (
 
 func main() {
 
+
 	// Set up a connection to the server.
-	conn, err := grpc.Dial("localhost:2323", grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:5000", grpc.WithInsecure())
 	if err != nil {
 		fmt.Println("did not connect:", err)
 		return
@@ -21,7 +23,10 @@ func main() {
 	defer conn.Close()
 
 	// Create a new client
-	client := pb.NewClientToMasterServiceClient(conn)
+	clientMaster := client.NewClientClient(conn)
+
+	// Create a new master client
+	masterClient := master.NewMasterClient(conn)
 
 	for {
 		// Ask user if he wants to upload or download a file
@@ -35,7 +40,7 @@ func main() {
 			fmt.Scanln(&filename)
 
 			// send upload request to server
-			resp, err := client.RequestToUpload(context.Background(), &pb.UploadRequest{Filename: filename})
+			resp, err := masterClient.RequestToUpload(context.Background(), &master.UploadRequest{Filename: filename})
 			if err != nil {
 				fmt.Println("UploadFile failed:", err)
 				break
@@ -44,11 +49,14 @@ func main() {
 
 			// Open socket connection with the given IP to upload the file to server in a new goroutine
 			go func() {
-				err := streamMP4File(resp.Ip, "../files/" + filename + ".mp4")
+				err := streamMP4File(resp.Ip + ":" + fmt.Sprint(resp.Port), "../files/" + filename + ".mp4")
 				if err != nil {
 					fmt.Println("Error streaming file:", err)
 					return
 				}
+
+				// Send upload success message to server
+				clientMaster.UploadSuccess(context.Background(),&client.Success{Success: true})
 				fmt.Println("File uploaded successfully")
 			}()
 
@@ -58,7 +66,7 @@ func main() {
 			fmt.Scanln(&filename)
 
 			// send download request to server
-			resp, err := client.RequestToDonwload(context.Background(), &pb.DownloadRequest{Filename: filename})
+			resp, err := masterClient.RequestToDonwload(context.Background(), &master.DownloadRequest{Filename: filename})
 			if err != nil {
 				fmt.Println("DownloadFile failed:", err)
 				break
@@ -67,7 +75,15 @@ func main() {
 
 			// Download the file from the server in a new goroutine
 			go func() {
-				err = downloadStream(resp.IPs, "../files/" + filename + ".mp4", resp.Filesize)
+
+				// convert resp.NodesAddresses to []string
+				nodesIps := make([]string, len(resp.NodesAddresses))
+				for i := 0; i < len(resp.NodesAddresses); i++ {
+					nodesIps[i] = resp.NodesAddresses[i].Ip + ":" + fmt.Sprint(resp.NodesAddresses[i].Port)
+				}
+
+				// Download the file
+				err = downloadStream(nodesIps, "../files/" + filename + ".mp4", resp.Filesize)
 				if err != nil {
 					fmt.Println("Error downloading file:", err)
 					return

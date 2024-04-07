@@ -58,7 +58,7 @@ func UploadChunk(conn net.Conn) {
 	println(startOffset)
 	println(endOffset)
 
-	file, err := os.Open(filename)
+	file, err := os.Open("files_1/"+filename)
 	if err != nil {
 		log.Println("Failed to open file:", err)
 		return
@@ -76,6 +76,8 @@ func UploadChunk(conn net.Conn) {
 	if err != nil {
 		log.Println("Error sending file data:", err)
 	}
+
+	println("chunk sent")
 }
 
 func DownloadFile(conn net.Conn, dir string) (string, int64, error) {

@@ -79,7 +79,8 @@ func(s *masterServer) ConfirmUpload(ctx context.Context, req *masterPb.FileUploa
 	})
 	
 	fileLookupTable.Set(req.FileName, fileData)
-
+	file := fileLookupTable.Get(req.FileName)
+	println("fileName:",req.FileName," filePath: ",file[0].filePath , " dataKeeperId: ",file[0].dataKeeperId," fileSize: ",file[0].fileSize)
 	// notify client of success
 
 	return &emptypb.Empty{}, nil 
@@ -105,6 +106,9 @@ func(s *masterServer) RegisterNode(ctx context.Context, req *masterPb.RegisterRe
 	}
 	//Add the new Node
 	nodesLookupTable.Set(nodeId, node)
+
+	newNode := nodesLookupTable.Get(nodeId)
+	println("A new Node Registered to the master with downloadPort",newNode.downloadPort," ,uploadPort ",newNode.uploadPort," grpcPort ",newNode.grpcPort," ip",newNode.ip)
 	//Wait For Timer
 	// go waitForTimer(timer, nodeId)
 	//Return response to the node which is it's Id
@@ -207,6 +211,7 @@ func(s *masterServer) RequestToUpload(ctx context.Context, req *masterPb.UploadR
 			break
 		}
 	}
+	println(node.uploadPort , node.downloadPort , node.grpcPort)
 	//Reply to the client with node's ip and host
 	return &masterPb.HostAddress{
 		Ip: node.ip,
@@ -217,13 +222,16 @@ func(s *masterServer) RequestToUpload(ctx context.Context, req *masterPb.UploadR
 func(s *masterServer) RequestToDonwload(ctx context.Context, req *masterPb.DownloadRequest) (*masterPb.DownloadResponse, error) {
 	fileName := req.Filename
 	fileData := fileLookupTable.Get(fileName)
+	println("fileData: ", fileData)
 	var addresses[]*masterPb.HostAddress;
 	
 	for i:=0; i<len(fileData); i++ {
 		nodeId:= fileData[i].dataKeeperId
 		node := nodesLookupTable.Get((uint32(nodeId)))
 		if(node.isAlive){
-			addresses = append(addresses, &masterPb.HostAddress{Ip: node.ip, Port: node.downloadPort})
+			currentAddress := &masterPb.HostAddress{Ip: node.ip, Port: node.downloadPort}
+			println(currentAddress)
+			addresses = append(addresses,currentAddress)
 		}
 	}
 	return &masterPb.DownloadResponse{NodesAddresses: addresses, Filesize: fileData[0].fileSize}, nil

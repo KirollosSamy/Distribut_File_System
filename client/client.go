@@ -46,6 +46,7 @@ func main() {
 				break
 			}
 			fmt.Println("UploadFile Response:", resp)
+			println(resp.Ip,resp.Port)
 
 			// Open socket connection with the given IP to upload the file to server in a new goroutine
 			go func() {
@@ -66,7 +67,7 @@ func main() {
 			fmt.Scanln(&filename)
 
 			// send download request to server
-			resp, err := masterClient.RequestToDonwload(context.Background(), &master.DownloadRequest{Filename: filename})
+			resp, err := masterClient.RequestToDonwload(context.Background(), &master.DownloadRequest{Filename: filename+".mp4"})
 			if err != nil {
 				fmt.Println("DownloadFile failed:", err)
 				break
@@ -83,7 +84,7 @@ func main() {
 				}
 
 				// Download the file
-				err = downloadStream(nodesIps, "../files/" + filename + ".mp4", resp.Filesize)
+				err = downloadStream(nodesIps, filename + ".mp4", resp.Filesize)
 				if err != nil {
 					fmt.Println("Error downloading file:", err)
 					return
@@ -165,7 +166,7 @@ func streamMP4File(ip string, filename string) error {
 }
 
 // downloadChunk downloads a chunk of the file from the server on the specified port
-func downloadChunk(ip string, startOffset, endOffset int64, filePath string, done chan<- error) {
+func downloadChunk(ip string, startOffset, endOffset int64, filename string, done chan<- error) {
 	// Establish connection to the server
 	conn, err := net.Dial("tcp", ip)
 	if err != nil {
@@ -175,21 +176,21 @@ func downloadChunk(ip string, startOffset, endOffset int64, filePath string, don
 	defer conn.Close()
 
 	// send file name to server
-	_, err = conn.Write([]byte(filePath))
+	_, err = conn.Write([]byte(filename + "\n"))
 	if err != nil {
 		done <- err
 		return
 	}
 
 	// send start and end offset to server
-	_, err = conn.Write([]byte(fmt.Sprintf("%d,%d", startOffset, endOffset)))
+	_, err = conn.Write([]byte(fmt.Sprintf("%d:%d\n", startOffset, endOffset)))
 	if err != nil {
 		done <- err
 		return
 	}
 	
 	// Create or open the file to write
-	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	file, err := os.OpenFile("downloads/"+filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		done <- err
 		return

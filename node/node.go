@@ -120,6 +120,7 @@ func runGrpcServer() {
 
 func connectMaster() *grpc.ClientConn {
 	masterAddress := fmt.Sprintf("%s:%d", config.MasterHost, config.MasterPort)
+	fmt.Println("I'm node connecting to master on address %s",masterAddress)
 	
 	conn, err := grpc.Dial(masterAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -132,6 +133,7 @@ func connectMaster() *grpc.ClientConn {
 }
 
 func registerNode() {
+	fmt.Println("I'm node which has an Ip of %s, GrpcPort of %s UploadPort of %s, DownloadPort of %s",utils.GetMyIp().String(), config.NodeGrpcPort,config.NodeUploadPort,config.NodeDownloadPort)
 	response, err := master.RegisterNode(context.Background(), &masterPb.RegisterRequest{
 		Ip: utils.GetMyIp().String(),
 		GrpcPort: config.NodeGrpcPort,

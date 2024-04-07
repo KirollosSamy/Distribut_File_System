@@ -189,7 +189,6 @@ func downloadChunk(ip string, startOffset, endOffset int64, filename string, don
 		return
 	}
 	
-	
 	// Create or open the file to write
 	file, err := os.OpenFile("downloads/"+filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -210,9 +209,6 @@ func downloadChunk(ip string, startOffset, endOffset int64, filename string, don
 		done <- err
 		return
 	}
-
-	// write to file 
-
 
 	done <- nil // Signal success
 }

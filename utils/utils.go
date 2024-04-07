@@ -55,7 +55,8 @@ func UploadChunk(conn net.Conn) {
     startOffset, _ := strconv.ParseInt(parts[0], 10, 64)
     endOffset, _ := strconv.ParseInt(parts[1], 10, 64)
 
-	println(sat)
+	println(startOffset)
+	println(endOffset)
 
 	file, err := os.Open(filename)
 	if err != nil {

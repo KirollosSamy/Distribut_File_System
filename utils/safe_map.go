@@ -25,6 +25,7 @@ func (sm* SafeMap[K, V]) Get(key K) V {
 	return sm.data[key]
 }
 
+// Return a copy of the underlying map
 func (sm* SafeMap[K, V]) GetMap() map[K]V {
 	return sm.data
 }

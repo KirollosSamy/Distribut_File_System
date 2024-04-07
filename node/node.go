@@ -39,7 +39,7 @@ func (s *nodeServer) Replicate(ctx context.Context, req *nodePb.ReplicateRequest
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		log.Println("failed to connect:", err)
+		log.Println("failed to connect to node:", err)
 		return &emptypb.Empty{}, nil
 	}
 
@@ -52,7 +52,11 @@ func (s *nodeServer) Replicate(ctx context.Context, req *nodePb.ReplicateRequest
 func pingMaster() {
 	heartBeat := &masterPb.HeartBeat{NodeId: NodeId}
 	for {
-		master.KeepMeAlive(context.Background(), heartBeat)
+		_, err := master.KeepMeAlive(context.Background(), heartBeat)
+		if err != nil {
+			log.Fatal("Error in pinging master:", err)
+			return
+		}
 		time.Sleep(time.Second)
 	}
 }
@@ -67,12 +71,16 @@ func receiveFile(conn net.Conn) {
 		return
 	}
 
-	master.ConfirmUpload(context.Background(), &masterPb.FileUploadStatus{
+	_, err = master.ConfirmUpload(context.Background(), &masterPb.FileUploadStatus{
 		FileName: fileName,
 		FilePath: fmt.Sprintf("%s_%d", config.Directory, NodeId) + fileName,
 		FileSize: fileSize,
 		NodeId: NodeId,
 	})
+
+	if err != nil {
+		log.Println("Error in confirming upload:", err)
+	}
 }
 
 func runUploadServer() {

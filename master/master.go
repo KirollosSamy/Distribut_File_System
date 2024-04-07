@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"math"
+	"golang.org/x/exp/slices"
+
 	// clientPb "distributed_file_system/grpc/client"
 	masterPb "distributed_file_system/grpc/master"
+	nodePb "distributed_file_system/grpc/node"
 	"fmt"
 	"log"
 	"math/rand"
@@ -11,26 +15,25 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	// "google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"distributed_file_system/utils"
 )
 
 type Config struct {
-	MasterPort uint32 `josn:"MASTER_PORT"`
+	MasterPort uint32 `json:"MASTER_PORT"`
+	ReplicationWaitTime time.Duration `json:"REPLICATION_WAIT_TIME"`
+	MinReplicas int `json:"MIN_REPLICAS"`
 }
 var config Config
 
-//We need to define lookup tables
-//first one for files
 type FileData struct {
     filePath string
     dataKeeperId uint32
 	fileSize int64
 }
 
-//Then define lookup table for nodes
 type Node struct {
     uploadPort uint32
 	downloadPort uint32
@@ -39,11 +42,8 @@ type Node struct {
 	isAlive bool
 	//timer *time.Timer
 	heartBeat int
-	// lastTimeToBing string
 }
 
-// fileLookupTable := make(map[string][]FileData)
-// NodesLookupTable := make(map[uint32]NodesData)
 var fileLookupTable *utils.SafeMap[string, []FileData]
 var nodesLookupTable *utils.SafeMap[uint32, Node]
 
@@ -52,8 +52,6 @@ var lastNodeId uint32 = 0
 type masterServer struct {
 	masterPb.UnimplementedMasterServer
 }
-
-
 
 func(s *masterServer) KeepMeAlive(ctx context.Context, req *masterPb.HeartBeat) (*emptypb.Empty, error) {
 	// restart the timer of that node
@@ -79,9 +77,8 @@ func(s *masterServer) ConfirmUpload(ctx context.Context, req *masterPb.FileUploa
 	})
 	
 	fileLookupTable.Set(req.FileName, fileData)
-	file := fileLookupTable.Get(req.FileName)
-	println("fileName:",req.FileName," filePath: ",file[0].filePath , " dataKeeperId: ",file[0].dataKeeperId," fileSize: ",file[0].fileSize)
-	// notify client of success
+
+	// TODO: notify client of success, handle multiple clients
 
 	return &emptypb.Empty{}, nil 
 }
@@ -116,49 +113,25 @@ func(s *masterServer) RegisterNode(ctx context.Context, req *masterPb.RegisterRe
 	return res, nil
 }
 
-func getTwoRandomNodes(existingDataNode int32)[]int32{
-	nodeIds := make([]int32,2)
-	nodeIds[0] = int32(rand.Intn(int(lastNodeId)))+1
-	for(nodeIds[0]==existingDataNode ||!nodesLookupTable.Get(uint32(nodeIds[0])).isAlive ){
-		nodeIds[0] = int32(rand.Intn(int(lastNodeId)))+1
-	}
-	
- 	nodeIds[1] =  int32(rand.Intn(int(lastNodeId)))+1
- 	for(nodeIds[1]==existingDataNode || nodeIds[1]==nodeIds[0]||!nodesLookupTable.Get(uint32(nodeIds[0])).isAlive ){
- 		nodeIds[1] = int32(rand.Intn(int(lastNodeId)))+1
-	}
-
- 	return nodeIds
- }
-
-func getRandomNode(existingDateNode int32)int32{
-	nodeId := int32(rand.Intn(int(lastNodeId)))
-	for(nodeId==existingDateNode ||!nodesLookupTable.Get(uint32(nodeId)).isAlive ){
-		nodeId = int32(rand.Intn(int(lastNodeId)))
-	}
-	return nodeId
-}
-
-func getNumOfAliveNodes()int{
-	count:=0
-	for i := 1; i <= int(lastNodeId); i++ {
-		if(nodesLookupTable.Get(uint32(i)).isAlive){
-			count++
+func selectNodes(n int, excluded []uint32) []uint32{
+	var availableNodes []uint32
+	for nodeId, node := range nodesLookupTable.GetMap() {
+		if node.isAlive && !slices.Contains(excluded, nodeId) {
+			availableNodes = append(availableNodes, nodeId)
 		}
 	}
-	return count
-}
 
-func selectNodeToReplicate(fileName string, dataNodeId int32){
-	aliveCnt := getNumOfAliveNodes()
+	numNodesToSelect := int(math.Min(float64(n), float64(len(availableNodes))))
 
-	if aliveCnt < 3{
-		fmt.Println("There is only one alive data node. Cannot replicate the file.")
-		return
-	}else{
-		// nodeIds := getTwoRandomNodes(dataNodeId)
-		//Here we should call the data keeper to replicate the file for the two nodes
+	var selectedNodes []uint32
+	for len(selectedNodes) < numNodesToSelect {
+		randId := uint32(rand.Intn(len(availableNodes)))
+		if !slices.Contains(selectedNodes, availableNodes[randId]) {
+			selectedNodes = append(selectedNodes, availableNodes[randId])
+		}
 	}
+
+	return selectedNodes
 }
 
 func checkIfAlive(){
@@ -177,26 +150,36 @@ func checkIfAlive(){
 	}
 }
 
-
-func checkForReplication(){
+func handleReplication(){
 	for{
-		time.Sleep(10*time.Second)
-
-		for _, value := range fileLookupTable.GetMap() {
-			//now we should iterate over each file and check if it's valid
-			validDataNodesCnt :=0
-
-			for _,data := range value{
-				if(nodesLookupTable.Get(data.dataKeeperId).isAlive){
-					validDataNodesCnt++
+		for fileName, fileReplicas := range fileLookupTable.GetMap() {
+			var activeReplicas []uint32
+			fmt.Printf("length of fileReplicas in file %s is: %d", fileName, len(fileReplicas))
+			for _, replica := range fileReplicas{
+				if(nodesLookupTable.Get(replica.dataKeeperId).isAlive){
+					activeReplicas = append(activeReplicas, replica.dataKeeperId)
 				}
 			}
-			if(validDataNodesCnt < 3){
-				
+
+			numRequiredReplicas := config.MinReplicas - len(activeReplicas)
+
+			if(numRequiredReplicas > 0){
+				destinations := selectNodes(numRequiredReplicas, activeReplicas)
+				if len(destinations) > 0 {
+					fmt.Printf("Replicationg file %s to %d nodes with ids: \n", fileName, len(destinations))
+					for _, id := range destinations{
+						println(id)
+					}
+					go replicate(fileName, activeReplicas[0], destinations)
+				}else {
+					fmt.Printf("No enough nodes to replicate file %s", fileName)
+				}
 			}
 		}
+		time.Sleep(config.ReplicationWaitTime * time.Second)
 	}
 }
+
 
 func(s *masterServer) RequestToUpload(ctx context.Context, req *masterPb.UploadRequest) (*masterPb.HostAddress, error) {
 	//Here we should look for all the nodes available that has that file
@@ -245,7 +228,7 @@ func waitForTimer(timer *time.Timer, nodeId uint32) {
 }
 
 func runGrpcServer() {
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 8000))
+	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", config.MasterPort))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -257,23 +240,50 @@ func runGrpcServer() {
 	grpcServer.Serve(lis)
 }
 
-// func connectClient() clientPb.ClientClient {
-// 	clientAddress := fmt.Sprintf("%s:%d", "host", 1247578)
-	
-// 	conn, err := grpc.Dial(clientAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
-// 	if err != nil {
-// 		log.Fatalf("failed to connect: %v", err)
-// 	}
-// 	defer conn.Close()
+func replicate(fileName string, source uint32, destinations []uint32) {	
+	sourceNode := nodesLookupTable.Get(source)
+	sourceAddress := fmt.Sprintf("%s:%d", sourceNode.ip, sourceNode.grpcPort)
 
-// 	return clientPb.NewClientClient(conn)
-// }
+	conn, err := grpc.Dial(sourceAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to node: %v", err)
+	}
+	defer conn.Close()
+
+	nodeClient := nodePb.NewNodeClient(conn)
+
+	fileReplicas := fileLookupTable.Get(fileName)
+
+	for _, destination := range destinations {
+		destinationNode := nodesLookupTable.Get(destination)
+
+		_, err = nodeClient.Replicate(context.Background(), &nodePb.ReplicateRequest{
+			Filename: fileName,
+			OtherNodeIp: destinationNode.ip,
+			OtherNodePort: destinationNode.uploadPort,
+		})
+		if err != nil {
+			log.Printf("Failed to replicate file %s to node %d: %v", fileName, destination, err)
+		} else{
+			fileReplicas = append(fileReplicas, FileData{
+				dataKeeperId: destination,
+				fileSize: fileReplicas[0].fileSize,
+				// filePath: ,
+			})
+		}
+	}
+
+	fileLookupTable.Set(fileName, fileReplicas)
+}
 
 func main() {
 	utils.ParseConfig("config/master.json", &config)
+
 	fileLookupTable = utils.NewSafeMap[string, []FileData]()
 	nodesLookupTable = utils.NewSafeMap[uint32, Node]()
 
 	go checkIfAlive()
+	go handleReplication()
+
 	runGrpcServer()
 }

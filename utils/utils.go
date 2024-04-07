@@ -28,7 +28,7 @@ func UploadFile(conn net.Conn, filename string, dir string) {
 		return
 	}
 
-	io.Copy(conn, file)
+	_, err = io.Copy(conn, file)
 	if err != nil {
 		fmt.Println("Error sending file data:", err)
 	}

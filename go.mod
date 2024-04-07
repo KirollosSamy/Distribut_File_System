@@ -1,6 +1,6 @@
 module distributed_file_system
 
-go 1.22.1
+go 1.23
 
 require (
 	google.golang.org/grpc v1.63.0

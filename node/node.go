@@ -29,6 +29,7 @@ type Config struct {
 	NodeGrpcPort uint32 `json:"NODE_GRPC_PORT"`
 	MasterHost string `json:"MASTER_HOST"`
 	MasterPort uint32 `json:"MASTER_PORT"`
+	Directory string `json:"DIRECTORY"`
 }
 
 var config Config
@@ -41,9 +42,9 @@ func (s *nodeServer) Replicate(ctx context.Context, req *nodePb.ReplicateRequest
 		log.Println("failed to connect:", err)
 		return &emptypb.Empty{}, nil
 	}
-	defer conn.Close()
 
-	utils.UploadFile(conn, req.Filename)
+	dir := fmt.Sprintf("%s_%d", config.Directory, NodeId)
+	utils.UploadFile(conn, req.Filename, dir)
 
 	return &emptypb.Empty{}, nil
 }
@@ -57,8 +58,9 @@ func pingMaster() {
 }
 
 func receiveFile(conn net.Conn) {
-	println("node receiving file")
-	fileName, fileSize, err := utils.DownloadFile(conn, fmt.Sprintf("files_%d", NodeId))
+	dir := fmt.Sprintf("%s_%d", config.Directory, NodeId)
+
+	fileName, fileSize, err := utils.DownloadFile(conn, dir)
 
 	if err != nil {
 		log.Println("Error downloading file from client: ", err)
@@ -67,7 +69,7 @@ func receiveFile(conn net.Conn) {
 
 	master.ConfirmUpload(context.Background(), &masterPb.FileUploadStatus{
 		FileName: fileName,
-		FilePath: "files/" + fileName,
+		FilePath: fmt.Sprintf("%s_%d", config.Directory, NodeId) + fileName,
 		FileSize: fileSize,
 		NodeId: NodeId,
 	})
@@ -120,7 +122,6 @@ func runGrpcServer() {
 
 func connectMaster() *grpc.ClientConn {
 	masterAddress := fmt.Sprintf("%s:%d", config.MasterHost, config.MasterPort)
-	fmt.Println("I'm node connecting to master on address %s",masterAddress)
 	
 	conn, err := grpc.Dial(masterAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -133,7 +134,6 @@ func connectMaster() *grpc.ClientConn {
 }
 
 func registerNode() {
-	fmt.Println("I'm node which has an Ip of %s, GrpcPort of %s UploadPort of %s, DownloadPort of %s",utils.GetMyIp().String(), config.NodeGrpcPort,config.NodeUploadPort,config.NodeDownloadPort)
 	response, err := master.RegisterNode(context.Background(), &masterPb.RegisterRequest{
 		Ip: utils.GetMyIp().String(),
 		GrpcPort: config.NodeGrpcPort,
@@ -154,8 +154,6 @@ func main() {
 	defer conn.Close()
 
 	registerNode()
-
-	fmt.Println("node registered")
 
 	go pingMaster()
 	go runUploadServer()

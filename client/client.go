@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	client "distributed_file_system/grpc/client"
 	master "distributed_file_system/grpc/master"
+	"distributed_file_system/utils"
 	"fmt"
 	"io"
 	"net"
@@ -45,16 +45,15 @@ func main() {
 				fmt.Println("UploadFile failed:", err)
 				break
 			}
-			fmt.Println("UploadFile Response:", resp)
-			println(resp.Ip,resp.Port)
 
 			// Open socket connection with the given IP to upload the file to server in a new goroutine
 			go func() {
-				err := streamMP4File(resp.Ip + ":" + fmt.Sprint(resp.Port), filename)
+				address := resp.Ip + ":" + fmt.Sprint(resp.Port)
+				conn, err := net.Dial("tcp", address)
 				if err != nil {
-					fmt.Println("Error streaming file:", err)
-					return
+					fmt.Println("failed to connect:", err)
 				}
+				utils.UploadFile(conn, filename, "files")
 
 				// Send upload success message to server
 				clientMaster.UploadSuccess(context.Background(),&client.Success{Success: true})
@@ -106,63 +105,6 @@ func main() {
 		}
 	}
 
-}
-
-// streamMP4File streams an MP4 file to the server on the specified port
-func streamMP4File(ip string, filename string) error {
-	println(ip)
-	// Open the MP4 file
-	file, err := os.Open("files/" + filename + ".mp4")
-	if err != nil {
-		return err
-	}
-	// defer file.Close()
-
-	// Start listening on the specified port
-	conn, err := net.Dial("tcp", ip)
-	if err != nil {
-		return err
-	}
-	// defer conn.Close()
-
-	// Send the file name to the server
-	_, err = conn.Write([]byte(filename + ".mp4" + "\n"))
-	if err != nil {
-		return err
-	}
-
-	// Start streaming the file data to the connection
-	go func(conn net.Conn) {
-		defer conn.Close()
-		defer file.Close()
-
-		reader := bufio.NewReader(file)
-		_, err = reader.WriteTo(conn)
-		if err != nil {
-			fmt.Println("Error uploading file:", err)
-			return
-		}
-
-		// buffer := make([]byte, 1024)
-		// for {
-		// 	bytesRead, err := file.Read(buffer)
-		// 	if err != nil {
-		// 		// End of file
-		// 		if err == io.EOF {
-		// 			break
-		// 		}
-		// 		fmt.Println("Error reading from file:", err)
-		// 		return
-		// 	}
-		// 	_, err = conn.Write(buffer[:bytesRead])
-		// 	if err != nil {
-		// 		fmt.Println("Error writing to connection:", err)
-		// 		return
-		// 	}
-		// }
-	}(conn)
-
-	return nil
 }
 
 // downloadChunk downloads a chunk of the file from the server on the specified port

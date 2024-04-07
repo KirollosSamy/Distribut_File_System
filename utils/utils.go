@@ -12,24 +12,23 @@ import (
 	"strings"
 )
 
-func UploadFile(conn net.Conn, filename string) {
+func UploadFile(conn net.Conn, filename string, dir string) {
 	defer conn.Close()
 
-	file, err := os.Open(filename)
+	file, err := os.Open(dir + "/" + filename)
 	if err != nil {
 		log.Println("Failed to open file:", err)
 		return
 	}
 	defer file.Close()
 
-	_, err = conn.Write([]byte(filename))
+	_, err = conn.Write([]byte(filename + "\n"))
 	if err != nil {
 		fmt.Println("Error sending filename:", err)
 		return
 	}
 
-	reader := bufio.NewReader(file)
-	_, err = reader.WriteTo(conn)
+	io.Copy(conn, file)
 	if err != nil {
 		fmt.Println("Error sending file data:", err)
 	}
@@ -83,16 +82,12 @@ func UploadChunk(conn net.Conn) {
 func DownloadFile(conn net.Conn, dir string) (string, int64, error) {
 	defer conn.Close()
 
-	println("reading file name")
-
 	reader := bufio.NewReader(conn)
 	fileName, err := reader.ReadString('\n')
 	if err != nil {
 		return "", 0, err
 	}
 	fileName = fileName[:len(fileName)-1]
-
-	println(fileName)
 
 	os.Mkdir(dir, 0777)
 	file, err := os.Create(dir + "/" + fileName)

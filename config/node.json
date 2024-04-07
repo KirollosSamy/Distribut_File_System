@@ -3,6 +3,7 @@
     "NODE_DOWNLOAD_PORT": 2000,
     "NODE_GRPC_PORT": 3000,
     "MASTER_HOST": "127.0.0.1",
-    "MASTER_PORT": 8000
+    "MASTER_PORT": 8000,
+    "DIRECTORY": "files"
   }
   

@@ -194,12 +194,12 @@ func(s *masterServer) RequestToDonwload(ctx context.Context, req *masterPb.Downl
 	return &masterPb.DownloadResponse{NodesAddresses: addresses, Filesize: fileData[0].fileSize}, nil
 }
 
-func waitForTimer(timer *time.Timer, nodeId uint32) {
-	<-timer.C
-	node := nodesLookupTable.Get(nodeId)
-	node.isAlive = false
-	nodesLookupTable.Set(nodeId, node)
-}
+// func waitForTimer(timer *time.Timer, nodeId uint32) {
+// 	<-timer.C
+// 	node := nodesLookupTable.Get(nodeId)
+// 	node.isAlive = false
+// 	nodesLookupTable.Set(nodeId, node)
+// }
 
 func runGrpcServer() {
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", config.MasterPort))

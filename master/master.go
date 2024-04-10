@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"math"
+	"strconv"
+
 	"golang.org/x/exp/slices"
 
 	// clientPb "distributed_file_system/grpc/client"
@@ -61,7 +63,7 @@ func(s *masterServer) KeepMeAlive(ctx context.Context, req *masterPb.HeartBeat) 
 	node := nodesLookupTable.Get(nodeId)
 	node.heartBeat +=1
 	nodesLookupTable.Set(nodeId, node)
-	fmt.Printf("Receiving heartbeat from node %d with value %d\n", nodeId,node.heartBeat)
+	//fmt.Printf("Receiving heartbeat from node %d with value %d\n", nodeId,node.heartBeat)
 
 	return &emptypb.Empty{}, nil 
 }
@@ -136,50 +138,22 @@ func selectNodes(n int, excluded []uint32) []uint32{
 
 func checkIfAlive(){
 	for{
-		time.Sleep(3*time.Second)
+		time.Sleep(50*time.Second)
 		for i := 1; i <= int(lastNodeId); i++{
 			node := nodesLookupTable.Get(uint32(i))
 			if(node.heartBeat == 0){
 				node.isAlive = false
+				fmt.Printf("Node "+ strconv.Itoa(i) + " is Dead\n")
 			} else{
 				node.isAlive = true
+				fmt.Printf("Node "+ strconv.Itoa(i) + " is Alive\n")
 			}
 			node.heartBeat = 0
 			nodesLookupTable.Set(uint32(i), node)
 		}
+		fmt.Printf("----------------------------------------------------------------\n")
 	}
 }
-
-func handleReplication(){
-	for{
-		for fileName, fileReplicas := range fileLookupTable.GetMap() {
-			var activeReplicas []uint32
-			fmt.Printf("length of fileReplicas in file %s is: %d", fileName, len(fileReplicas))
-			for _, replica := range fileReplicas{
-				if(nodesLookupTable.Get(replica.dataKeeperId).isAlive){
-					activeReplicas = append(activeReplicas, replica.dataKeeperId)
-				}
-			}
-
-			numRequiredReplicas := config.MinReplicas - len(activeReplicas)
-
-			if(numRequiredReplicas > 0){
-				destinations := selectNodes(numRequiredReplicas, activeReplicas)
-				if len(destinations) > 0 {
-					fmt.Printf("Replicationg file %s to %d nodes with ids: \n", fileName, len(destinations))
-					for _, id := range destinations{
-						println(id)
-					}
-					go replicate(fileName, activeReplicas[0], destinations)
-				}else {
-					fmt.Printf("No enough nodes to replicate file %s", fileName)
-				}
-			}
-		}
-		time.Sleep(config.ReplicationWaitTime * time.Second)
-	}
-}
-
 
 func(s *masterServer) RequestToUpload(ctx context.Context, req *masterPb.UploadRequest) (*masterPb.HostAddress, error) {
 	//Here we should look for all the nodes available that has that file
@@ -240,6 +214,48 @@ func runGrpcServer() {
 	grpcServer.Serve(lis)
 }
 
+func handleReplication(){
+	for{
+		time.Sleep(config.ReplicationWaitTime * time.Second)
+
+
+		for fileName, fileReplicas := range fileLookupTable.GetMap() {
+			var activeReplicas []uint32
+			fmt.Printf("length of fileReplicas in file %s is: %d\n", fileName, len(fileReplicas))
+			for _, replica := range fileReplicas{
+				if(nodesLookupTable.Get(replica.dataKeeperId).isAlive){
+					activeReplicas = append(activeReplicas, replica.dataKeeperId)
+					fmt.Println("File is Stored on node "+strconv.Itoa((int(replica.dataKeeperId))))
+				}
+				fmt.Println("-----------------------------------------")
+			}
+
+			numRequiredReplicas := config.MinReplicas - len(activeReplicas)
+
+			if(numRequiredReplicas > 0){
+				destinations := selectNodes(numRequiredReplicas, activeReplicas)
+				if len(destinations) > 0 {
+					fmt.Printf("Replicating file %s to %d nodes with ids: \n", fileName, len(destinations))
+					for _, id := range destinations{
+						println(id)
+					}
+				replicate(fileName, activeReplicas[0], destinations)
+				//Now I will Loop over the lookup table of files to check it's updated successfully
+				for _,fileDate := range fileLookupTable.Get(fileName){
+					
+					fmt.Println("Ana gwa l handle replicate function")
+					fmt.Printf("file %s is in %d\n", fileName, fileDate.dataKeeperId)
+				}
+				
+				fmt.Println("-----------------------------------------")
+				}else {
+					fmt.Printf("No enough nodes to replicate file %s", fileName)
+				}
+			}
+		}
+	}
+}
+
 func replicate(fileName string, source uint32, destinations []uint32) {	
 	sourceNode := nodesLookupTable.Get(source)
 	sourceAddress := fmt.Sprintf("%s:%d", sourceNode.ip, sourceNode.grpcPort)
@@ -268,10 +284,23 @@ func replicate(fileName string, source uint32, destinations []uint32) {
 			fileReplicas = append(fileReplicas, FileData{
 				dataKeeperId: destination,
 				fileSize: fileReplicas[0].fileSize,
-				// filePath: ,
 			})
+
+			for _,fileDate := range fileReplicas{
+				fmt.Println("Ana gwa l replicate function")
+				fmt.Printf("file %s is in %d\n", fileName, fileDate.dataKeeperId)
+			}
+			
+			fmt.Println("-----------------------------------------")
 		}
 	}
+
+	for _,fileDate := range fileReplicas{
+		fmt.Println("Ana khlst l replicate function")
+		fmt.Printf("file %s is in %d\n", fileName, fileDate.dataKeeperId)
+	}
+	
+	fmt.Println("-----------------------------------------")
 
 	fileLookupTable.Set(fileName, fileReplicas)
 }

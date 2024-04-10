@@ -20,12 +20,19 @@ func (sm* SafeMap[K, V]) Set(key K, value V) {
 }
 
 func (sm* SafeMap[K, V]) Get(key K) V {
-	sm.mutx.Lock()
-	defer sm.mutx.Unlock()
+	sm.mutx.RLock()
+	defer sm.mutx.RUnlock()
 	return sm.data[key]
 }
 
 // Return a copy of the underlying map
-func (sm* SafeMap[K, V]) GetMap() map[K]V {
-	return sm.data
+func (sm *SafeMap[K, V]) GetMap() map[K]V {
+	sm.mutx.RLock()
+	defer sm.mutx.RUnlock()
+
+	copyMap := make(map[K]V)
+	for k, v := range sm.data {
+		copyMap[k] = v
+	}
+	return copyMap
 }

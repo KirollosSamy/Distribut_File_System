@@ -66,7 +66,7 @@ func main() {
 			fmt.Scanln(&filename)
 
 			// send download request to server
-			resp, err := masterClient.RequestToDonwload(context.Background(), &master.DownloadRequest{Filename: filename+".mp4"})
+			resp, err := masterClient.RequestToDonwload(context.Background(), &master.DownloadRequest{Filename: filename})
 			if err != nil {
 				fmt.Println("DownloadFile failed:", err)
 				break
@@ -83,7 +83,7 @@ func main() {
 				}
 
 				// Download the file
-				err = downloadStream(nodesIps, filename + ".mp4", resp.Filesize)
+				err = downloadStream(nodesIps, filename, resp.Filesize)
 				if err != nil {
 					fmt.Println("Error downloading file:", err)
 					return

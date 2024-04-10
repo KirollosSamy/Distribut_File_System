@@ -21,4 +21,5 @@
 go.work
 
 
-files*
+files*/
+downloads/
